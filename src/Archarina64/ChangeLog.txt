@@ -1,0 +1,2371 @@
+﻿///CHANGELOG///
+
+--------------
+---1.68
+--------------
+
+- The app now shows a custom error when there's a .toml parsing error, and it skips rendering that actor
+
+- Fixed an issue where it wasnt possible to preview or load data from .zscene files from z64rom
+
+- Fixed an issue where loading an .obj without #room tags in scene preview mode would always treat the new model as multi room
+
+
+--------------
+---1.67 to 1.67.1
+--------------
+
+Auto-Update breaks if going from 1.66! manual download: https://github.com/Nokaubure/SharpOcarina/releases/download/v1.67/SharpOcarina1.67.zip
+
+- You can now preview multiple cutscene camera commands in a row with play all
+  - Cameras will behave very close to ingame: a previewed camera never plays again, when 2 cameras overlap the one that is lower in the list takes priority, etc
+  - Textboxes are also rendered, slow text display is not supported but their Fade timer and Frame duration is. For textboxes that require you to press A button, its instead "Z" or left click in the viewport.
+  (other commands will be previewed in future updates)
+  - [1.67.1] Transition commands are also rendered
+
+- Reworked cutscene textboxes
+  - Start frame is now disabled, instead you set it per textbox. This avoids having to make FFFF textboxes to stall the command, as its done by SO automatically.
+  - You cannot have more than 1 textbox command per cutscene (its how all vanilla cutscenes work)
+  - Opening an old scene will make SO convert the textbox command to the new format, and merge multiple commands if necessary
+  - You can preview textboxes in Global ROM and z64rom modes
+
+- Changed the way the listbox data is displayed in camera, actors and textbox cutscene commands, as well as in the cutscene command list window
+
+- Cutscene Link command now renders 2 Links on the selected points, to aid in rotation Y adjustment
+
+- Added an option to render only the selected room
+
+- Selecting an OoT 1.0 U or 1.2 U rom during z64rom installation now makes SO download a patch and apply it to turn a copy of the rom into a mq debug rom
+
+- Small performance boost when pressing N64 render for the first time and when loading/reloading z64rom projects
+
+- Small performance boost when adding/deleting/editing environments
+
+- Improved slightly how objects with joints are rendered (I actually tried to make them to properly render, but failed, maybe next update...)
+
+- Added duplicate button on environments
+
+- View zscene from rom now automatically sets SO to global rom mode
+
+- Updated OpenGL library in an attempt to fix SO for modern windows
+
+- The setting "Only render selected cutscene command" is now On by default (recommended to use if you have it Off)
+
+- Fixed an issue where an error would show up on invalid tags without digits. Additionally, SO will now report the name of the group that is causing that issue.
+
+- Fixed an inconvenience where cutscene actor points would be rendered during a cutscene preview, potentially clustering the view
+
+- Fixed an issue where some actors would cause the ones rendered afterwards to have different colors, or unload textures in "View .zscene" mode.
+
+- [1.67.1] Improved the accuracy of textbox rendering, renamed textbox end frame to frame duration
+
+- [1.67.1] Fixed an issue where in some situations, any cutscene command placed after a textbox command would have no effect ingame
+
+- [1.67.1] Fixed an issue regarding the fade timer of rendered textboxes
+
+--------------
+---1.66
+--------------
+
+- Updated SharpOcarina plugin to 1.1.5 (update it via Help > Update Blender plugins, or manually by importing BlenderScripts\io_export_so_3.0.zip)
+	- Groups are now kept together with a new #Group tag that its exported automatically, necessary for type 2 rooms (cullable room type) to work properly
+
+- Updated Objex2 plugin to 2.6.5 (update it via Help > Update Blender plugins, or manually by importing BlenderScripts\io_export_objex2.zip)
+	- Added a button to automatically fix the vertex assigned to various groups of the selected model by only keeping those with the highest weight
+
+- Cullable Rooms (Type 2) now properly group dlists by how the groups are defined in blender, so this feature is now fully functional. You need to update the SO plugin to 1.1.5 else the group data is lost on export.
+
+- Groups with #NoMesh tag no longer appear in the room tab, they're no longer rendered in non-N64 preview and they cant be selected via ctrl+rightclick. This is a big optimization change so it may lead to new bugs, let me know if you find any.
+
+- Values that can only be 0 or 1 are now displayed as checkboxes in actor settings
+
+- Switch flags can now be given a name in the scene, this has 0 impact ingame and its only for organization purposes. Name will also be displayed in the flag log.
+
+- Fog distance in environments is now displayed in decimal
+
+- Prerendered scenes are now accurately aligned to ingame resolution when previewing cameras, as well as the fov
+
+- FOV value is now displayed in decimals, and fixed cameras will be previewed with their fov value, as long as its indicated that they make use of the FOV
+
+- Added --force-code, --force-audio and --clean in advanced z64rom builds tab
+
+- Fixed a rendering issue with prerendered scenes (present since 1.65)
+
+- Fixed an issue where multitexture slot failed to be match Blender's in certain cases when pressing Reload button
+
+- Fixed an issue where the tags of a multitexture would not get updated on reload
+
+--------------
+---1.65
+--------------
+
+- Added Cullable Room setting (Type 2) in Room Env. This is used by the game to cull groups that are behind others, however due how SO is built, hitting the 64 DList cap is quite easy, this will be improved in 1.66
+
+- Added Options > Export .h files with offsets (z64rom), this generates a header file with all display list offsets of each room, good for coding purposes
+
+- Playing cutscene cameras now properly resizes the window to 4:3 aspect ratio and centers it instead of staying in top left corner
+
+- Added button in custom combiner to copy the 3 commands to the clipboard, you can then paste it in the group's name in blender to store them more effectively
+
+- Fixed a critical issue where the new crash debugger would stop working on consecutive usages
+
+- Fixed an issue where attempting to preview texture animations on alternate headers with "inherit from main header" would potentially error out
+
+- Fixed major issues regarding alternate headers when viewing vanilla scenes or importing data from scenes, such as not being able to import cutscenes (bug present since 1.62)
+
+- Fixed an issue where billboard display lists would corrupt the render ingame if they had more than 1 material assigned
+
+- Fixed an issue where autoadd objects would add Link objects to the scene if custom actors used them
+
+- Fixed an issue where creating a custom actor would not put ACT_ in front of the header define, causing conflicts with objects of the same name
+
+- Fixed an issue where polytype field in groups didnt behaved correctly and could potentially crash the app since 1.63
+
+- Due vertex optimization, it wasn't possible to separate triangles for the metallic effect. As a temporal measure, groups with #Metallic tag are now ignored during optimization.
+
+--------------
+---1.64
+--------------
+
+- Added better crash debugger, installable on z64rom projects via Tools tab. Features:
+	- Now displays the stack trace on first page
+	- Displays the function names of: Code (Global), Hooks, Actors, Link, Pause menu
+	- Can resume the game after an ASSERT
+	- Removed unhelpful pages
+Note: You need to click it in tools tab to update the function names database after building once. Enable "Options -> Run SO additional tasks when building" 
+to do this automatically whenever you build/run the game via SO.
+
+- Auto-hook window: 
+	- Added button to open vanilla actor folder and renamed some buttons
+	- Added auto-completion on the hook function box
+	- Window can now be resized properly
+	- Fixed an issue where adding a hook to an existing would also write again all function declarations and structures
+	- Fixed an issue where trying to hook an existing function would not report its filename correctly
+	- Fixed an issue where multiline includes wouldnt behave correctly
+
+- Adjusted the scale of some windows when maximizing them
+
+- Fixed an object rendering issue where actors with skeletons couldnt make use of the ScaleArray feature
+
+- [1.64.1] Fixed a logical issue where better crash debugger would update the function list before z64rom built, sometimes resulting in outdated function offsets (this fix will not apply to --force and --release however) 
+
+- [1.64.1] Fixed an issue where better crash debugger would override any custom change in CrashScreen.c
+
+- [1.64.1] Fixed an issue where new link animations would make player.c recompile everytime even if no new changes were made
+
+- [1.64.1] Fixed an issue where texture animations in segment F couldnt be previewed
+
+--------------
+---1.63
+--------------
+
+- Updated SharpOcarina plugin to 1.1.4 (update it via Help > Update Blender plugins, or manually by importing BlenderScripts\io_export_so_3.0.zip)
+	- #Pivot tag will be replaced on export with the coordinates of the object's origin. So far it only affects billboards in latest SO, it will have more uses in the future.
+	- Added #Polytype property, this is used to link a collision material to Collision tab in SO (main purpose being the new Polytype Swap)
+	- Fixed an issue where Mass Initialize would sometimes fail to import fast64 collision
+
+- Updated Objex2 plugin to 2.6.4 (update it via Help > Update Blender plugins, or manually by importing BlenderScripts\io_export_objex2.zip)
+	- Now creates a config.toml on export if it doesnt exists, you still need to configure it via notepad
+	- Mass Initialize can now convert fast64 flipbooks to objex format
+	- Simplified fold/unfold tab, now you just need to add a pose and click switch. It also locks the armature into rest pose while unfolded.
+	- Fixed an issue where Mass Initialize would sometimes fail to import fast64 collision
+	- Improved names and descriptions of f3dzex2 tab
+
+- Added subdivision and collision bounds editor in collision tab, z64rom only. A prompt asking to update bgcheck file will show up on project load, to update existing projects
+
+- Added new texture anim command: Polytype Swap, this lets swaping polytypes ingame, based on flag. For this you must use #Polytype00 tags and configure the collision inside SO.
+
+- Added multitexture alpha in texture anim color commands
+
+- Redesigned collision tab so it now uses dropdowns instead of radio buttons, ID now starts from 0 instead of 1
+
+- Added Zelda64 Text Editor (Skawo fork) in Tools tab. It will download the latest version in Tools folder and check for updates automatically.
+
+- Pressing G on the viewport acts identically to middle mouse button (alternate bind for touchpad users)
+
+- Updated the "Show Controls" window with new bindings from last updates
+
+- Added #Pivot tag, as of now the only use of this tag is to set the pivot point of billboards. Simply put #Pivot tag on a group in blender for its pivot point to transfer into the exported .obj. New SO plugin required.
+
+- #Polytype00 tag now uses decimal numbers for the ID instead of hexadecimal
+
+- Added Help > Update/Install Blender Plugins to easily update them, note that it will fail if your blender appdata is not in your main disk drive
+
+- Added Help > Update z64convert/z64rom .exe files (z64rom mode), as the name says it partially updates the current project with new exe files, this doesnt fully update an old project ()
+
+- Slightly performance boost
+
+- Fixed an issue where add object button was still limited to 15 objects in z64rom installations that had the object cap increased (autoadd object still worked)
+
+- Fixed an issue where a debug dummy checkbox appeared in room tab
+
+- Fixed an issue where texture scrolling speed of advanced texture anims didnt matched ingame speed
+
+- Fixed an issue where transparent I4/I8 textures werent being rendered in SO viewport (reminder, for an I4/I8 texture to be considered transparent, the group needs to have less than 255 alpha)
+
+- Fixed an issue where all vertex in the object file were taken into account when calculating the collision bounds, instead of only the collision vertex
+
+- Fixed an issue where the pivot point of 2D billboards was missplaced by 5 units vertically
+
+- Fixed an issue where collision window would not refresh properly when creating a polytype
+
+- Fixed an issue where color blending animations with transparent dlists werent rendered correctly inside SO
+
+- Fixed an issue where color blending animations were rendered in backwards order
+
+- Removed "Help > Getting crashes? go here" as the guide was too ancient and barely applicable to modern standards
+
+--------------
+---1.62
+--------------
+
+Note: unfortunately 1.61 was broken on autoupdater and didnt noticed till 5 months after, so also check 1.61 changelog if you only use autoupdate
+
+- Updated SharpOcarina plugin to 1.1.3 (update it manually by importing BlenderScripts\io_export_so_3.0.zip)
+	- Added collision checkboxes for Block Epona, Priority, Wall Damage
+	- IA4 texture type support
+	- Mass Initialize can now convert Fast64 collision materials
+	- Added unknown collision flags for modding purposes
+	- Added quick exporting with one click in the viewport menu
+	- Fixed an issue where converting from Fast64 would assign multitextures to faces that werent supposed to have one
+	- Fixed small void and conveyor direction not exporting
+
+- Updated Objex2 plugin to 2.6.3 (update it manually by importing BlenderScripts\io_export_objex2.zip)
+	- Added quick exporting with one click in the viewport menu 
+	- Mass Initialize can now convert Fast64 collision materials
+	- Mass Initialize now sets the Deform checkbox of all bones to true
+	- Fixed an issue where converting from Fast64 would assign multitextures to faces that werent supposed to have one
+	- (2.6.2) Added the armature folding menu from objex 2.0
+
+- Added snap features when moving actors
+	- Hold C to snap to nearest vertex
+	- Hold V to snap to the center of the nearest edge
+	- Hold B to snap alongside the nearest edge
+
+- The rom will no longer be played in the emulator if the project has build errors (z64rom)
+
+- Added feature to move all cutscene commands from an specified start frame by X frames in Extra tab
+
+- Added feature to change the frame duration of all cutscene points / textboxes of the selected command from an specified start frame by X frames in Extra tab
+
+- Added feature to move selected actor to another room in Extra tab
+
+- Added feature in auto-hook to create empty actors, finds empty ID's automatically
+
+- Added 2 advanced build options in File tab for z64rom:
+	- Rebuild all files to fix a broken project (--force)
+	- Public release, turns all debug features off (--release) (it also takes care of the --release bug that plagues z64rom with a temporal fix)
+
+- Added "Import data from ROM/.zscene/SharpOcarina XML" in Extra tab, as the name suggest it allows importing data from scenes in different formats, also hidded the old options to import stuff from zscenes since they're now obsolete
+
+- Auto-update feature rewriten to fetch updates from a github server, improving speed and showing a download bar
+
+- Added setting to be able to fully spin the camera and have it upside down. When the camera is upside down, camera and actor movement is also adjusted to take care of the inverted view.
+
+- Added copy&paste buttons on actors and pathway points, this copies their data in the clipboard meaning it works between SO windows. Pathway points can read the position data of actors and viceversa.
+
+- Added view button in pathway tab, which renders the actors that use this pathway in the selected point (needs global ROM/z64rom mode)
+
+- Information about which actors are using the switch/chest/collectible flags is now displayed in the actor window
+
+- XMLs can now be loaded from an XML folder inside a z64rom installation, for example <z64rom_path>/XML/ModelFlags.xml
+
+- Cutscene window now displays the start frame of selected camera position / text box / actor position
+
+- I4 and I8 textures now use alpha values if alpha is set below 255 (not rendered inside SO)
+
+- If switch flag property is selected on current actor and then a different one with switch flag property is selected, the cursor will automatically select switch flag
+
+- You can now load a model when viewing a scene, doing so will allow you to save it and test ingame
+
+- Overall performance boost
+
+- IMPORTANT! Fixed an issue where more vertex than usual were written in the scene file (performance boost ingame on hardware/LLE emus), added option to disable it for collision since one test performed better with the old code
+
+- Added auto checkbox next to collision, if checked it will use the room model as collision (if single room mode, only room0 provides it)
+
+- Fixed an issue where instances would be dragged 2x faster than intended when holding Z or X (stick to ground/ceiling)
+
+- Removed the redundant option "Add object to all rooms" since Scene Objects tab does the same thing
+
+- Fixed an issue where working directory pointed to system32 when opening the application via task bar
+
+- Fixed an issue where the droptable link in the droptable editor was broken
+
+- Fixed an issue where Motion blur would not be set to true when using the cutscene command in new projects
+
+- Fixed an issue where doing undo (ctrl+Z) after an actor change on a different room would remove all actors from current room
+
+- Fixed an issue where undo/redo (ctrl+Z ctrl+Y) didnt worked at all with pathways, cameras, pointlights, waterboxes and cutscenes
+
+- Fixed an issue where the wrong pathway or cutscene command would be selected sometimes when trying to select points
+
+- Fixed an issue where z64rom would not compile if an MM titlecard was blank
+
+- Removed Vertex Normals checkbox since it was simply an unfinished version of Scaled Normals
+
+- Fixed an issue where the game would get a bg_check crash: !IS_ZERO(ac_size) on unoptimized maps
+
+- Cutscene entrance parameters are now invisible in z64rom mode since they're not needed
+
+- Fixed issues related to reload button and scene headers
+
+- Fixed an issue where materials named "None" would appear on multitexture list when having collision only materials in the scene
+
+- Fixed an issue where spawnpoints with room set to FF would fail to detect which room they're in
+
+- Fixed an issue where arrow keys didnt worked for selecting properties
+
+--------------
+---1.61
+--------------
+
+- New cutscene commands (all require z64rom, on older installations SO will provide the needed updates to use them):
+	- Motion Blur: Camera effect imported from MM, credits to Thar0
+	- Trigger Exit: Triggers an exit, supports both vanilla and z64rom exits
+	- Play Sound: Plays a sound, supports both vanilla and z64rom custom ones
+	- Set Flag: Sets/Disables a flag, or also Adds/Removes an item or rupees
+
+- Object space/size is now displayed in Kilobytes
+
+- SO will only prompt to update a file (such as scenerender.c) if its necessary for using a new feature. Older files will go to a trashbin folder instead of being permanently deleted.
+
+- Added customization settings in z64rom post-install operations window
+
+- Added full support to Majora's Mask style titlecards (requires up to date z64rom)
+
+- Added support to extended object cap, so you can have 42 objects in a scene instead of 19 (requires up to date z64rom)
+
+- Fixed an issue where custom Link anims hook would fail if more DMA files were also created in the project (z64rom)
+
+- Fixed an issue where stop music command didnt worked at all
+
+- Fixed an issue where imported cutscenes would not import the textbox command correctly
+
+- Fixed an issue regarding custom actor database not assigning the actor ID of dependencies correctly
+
+- Fixed an issue where using arrow keys to scroll the object list would not refresh the description
+
+--------------
+---1.60
+--------------
+
+
+- Added a post install operation to remove prerendered cutscenes from z64rom (4 MB more of ROM space)
+
+- Post install operations can now be accessed at any time in tools tab
+
+- Convert File to C array window can now create .inc files and split big images into several parts. C arrays are now u64 instead of u32
+
+- Updated Custom Actor Database to allow actors that depend on other actors, such as Eyegore, as well as actors that share the same custom object
+
+- Added a build task in Tools tab to compile all .pngs in a z64rom folder to .inc files, useful for #include's. #SplitWWxHH can be used in the filename to split big images into several parts.
+
+- Added a build task in Tools tab to compile all files found in src/system/DMA/<filename>/ into a DMA file, creating entries in dma.toml and a header file in /include/DMA/
+
+- Added option to run all build tasks everytime z64rom is built (via File or play button)
+
+- Added command line to run only the build tasks of SharpOcarina without opening the UI part itself
+	"PathToSharpOcarina.exe" --z64romtasks "PathToZ64project.toml"
+
+- Added button to view source file in Auto-Hooker window
+
+- Crawlspace cameras (type 0x1E) now render both their points in the viewport (there's 6 points in fact, but 4 are unused, they can be seen by editing settings.xml)
+
+- Enabled Z shortcut (stick to ground) to fixed camera's, mostly to help with crawlspace placement
+
+- Toned down the April Fools pranks due complains over the years
+
+- Cleaned the menus to not show binary exclusive options in z64rom mode and viceversa
+
+- [MM] Actor database can now display debug names
+
+- Fixed an issue where a good amount of scenes could not be previewed with File > View Scene
+
+- Fixed an issue where autosaves were happening while viewing scenes. This caused lagspikes every 60 seconds.
+
+- Fixed an issue where images of uneven resolutions would bring up error messages
+
+- Fixed an issue where ignore rotation in actor rendering would not work with rigged actors
+
+- Fixed an issue where the application didn't worked in windows 7 (since 1.40)
+
+--------------
+---1.59
+--------------
+
+- Added Auto-Hooker & Actors (z64rom)
+	- Instantly hook any function you want by typing its name
+	- Move an actor from decomp to z64rom in a single click, this will also take care of the png images
+	- Downloads z64oot folder if its not found
+
+- Download bars will appear when any download occurs, minus for SO updates
+
+- Binutils is now stored locally after download, making z64rom installation faster after the first time
+
+- Actor database can now display debug names
+
+- Documented more cutscene misc actions, added stop music command, added flag presets in texture animations
+
+- Custom music will now appear in the scene tab in z64rom mode
+
+- Slightly improved performance when previewing scenes, specially with a high amount of instances (actors/cameras/cutscenes etc)
+
+- Added z64decompress as rom decompressor
+
+- Changes in zobj copy tool:
+	- Added a copy all button. This will append the source zobj to the target zobj, updating all offsets. (more accurate than 1 by 1)
+	- If a z64oot decomp folder is detected inside the z64rom folder, it will automatically pick .xmls from the decomp
+	- Automatic .ld/.xml detection now also works with objects inside .vanilla folder
+
+- Updated Objex2 plugin to 2.61 (update it manually by importing BlenderScripts\io_export_objex2.zip)
+	- Exported Link anim bins will have the frame count at the beginning of the filename, this is to have their name ready for the new link anims feature of SO
+	- Fixed an issue when converting materials from Fast64
+
+- Fixed an error that would sometimes appear when reloading rooms, adding pathways or exits
+
+
+--------------
+---1.58
+--------------
+
+- Added "Tex Pointer +1" checkbox in group settings, this lets you set a texture swap animation at 1 segment higher than the selected one.
+
+- Added "Add New Link Animations" in tools tab (only visible in z64rom mode). This is a solution to a feature that was never implemented in z64rom, click if you want to add new link animations.
+
+- Fixed an issue where it was hard to interact with any waterbox,camera or pathway after the 2nd added one since last update
+
+- Fixed an issue where an error would sometimes show up when selecting pathways via mouse click
+
+- Fixed an issue where a crash would occur when deleting additional textures that were assigned to an animation. 
+
+- Fixed an issue where the application version appeared as v21.7
+
+
+--------------
+---1.57
+--------------
+
+- The program now loads with a new scene already created
+
+- Slightly performance increase
+
+- View .zscene now displays the exit list
+
+- Added support for IA4 texture format across the entire application
+
+- Added controls for command E2 (SetOtherMode_L) in the customizer
+
+- Added a setting to only render pathways in pathway tab
+
+- Added a setting to not render group selection highlight (it will do a short flash instead)
+
+- Added a setting to use Majora's Mask texture scrolling orientation (z64rom)
+
+- Optimized display lists to use 1 less command (reduces room filesize by 8 bytes per group)
+
+- Added arguments to SharpOcarina.exe (draw&drop files inside it or pass them via shortcut param / cmd)
+	- if a ROM .z64 or a z64rom .toml is present, they will be loaded as Global ROM/z64rom
+	- if a .xml is present, it will open the scene
+	- if a .obj is present, it will be added as collision and rooms in a new scene
+
+- Changes to "Convert image or file to C array"
+	- Images now display in their proper resolution instead of stretched to 64x64
+	- 8x8 textures are supported
+	- Fixed rgba16 not working with most resolutions
+	- Allows drag&drop
+
+- Changed some DList combiners
+	- Vertex alpha supports more combinations, such as transparent multitextures
+	- Vertex alpha and Alpha mask now react to the alpha value when multitexture is disabled
+	- Any setting will react to prim color when multitexture is disabled
+	- NEW: Using vertex alpha with 255 alpha will make so vertex alpha erases the 1st texture
+
+- Features and fixed issues regarding Texture Anims:
+    - Fixed conditional draw animation not working at all in z64rom projects
+	- Fixed an issue where the first frame of a color blend animation would be black if "Freeze if flag is not set" was checked
+	- Added "Freeze at End" checkbox, this will stop the color blend animation at the last frame
+	- SharpOcarina can now automatically prompt an update if the SceneRender version is outdated
+
+- Fixed various issues with pause map editor in z64rom mode
+	- Fixed an issue where it would crash if the current scene ID is 0-9
+	- Fixed an issue where it would crash if the prompt to open a z64rom folder was cancelled
+	- Fixed an issue where the amount of floors per dungeon wasn't written, leading to unexpected behaviours
+	- Fixed an issue where a null chest flag would be written as 65535 instead of -1
+	- Fixed an issue regarding new chest icons not saving correctly
+	- Fixed an issue where boss floors could not be set for scenes 8 and 9
+	- Fixed an issue where changes in the chest icons would reset after saving
+	- Fixed an issue where updating the position of icons would not be reflected instantly on the listbox
+	- Chest flag now appears in the listbox
+	- If not in z64rom mode, manually exporting to z64rom will save the rom first, due limitations
+
+
+- Removed Env color checkbox from group settings (did nothing before)
+
+- Fixed an issue where playbutton was not correctly anchored in the UI
+
+- Fixed an issue where SO sometimes would wronly name rooms when reloading a model that got rooms added
+
+- Fixed an issue where a dlist must had multitexture to be affected by color blending texture animation
+
+- Fixed an issue where unchecking customize in group setting would not cause a render refresh
+
+- Fixed an issue where conditional draw animation would sometimes not write a required dlist in z64rom mode
+
+- Fixed an issue where the D9 command of the customizer wasnt saved correctly when using the checkboxes
+
+- Fixed an issue where the exit numeric box of collision tab didnt worked with z64rom exit mode
+
+--------------
+---1.56
+--------------
+Note: This update has been released sooner due a critical issue
+
+- Fixed a critical issue where opening a scene made before 1.54 and saving it would make it impossible to open back
+
+- Fixed an issue where vertex beyond int16 range would crash SO when rendering. They now get clamped as failsafe
+
+- Fixed an issue where reload button would not update the rendering without the user having to reenable it manually
+
+- [MM] Fixed an issue where view scenes from ROM (beta) didnt worked with MM roms
+
+- [MM] Fixed an issue where actors with locked rotation would appear as Unknown, not render, not get their object autoadded and not appear in the flag log
+
+--------------
+---1.55
+--------------
+
+- Updated SharpOcarina plugin to 1.1.2 (update it manually by importing BlenderScripts\io_export_so_3.0.zip)
+	- Added a few missing tags in the form of checkboxes, only Alpha Mask is rendered inside Blender
+	- Initializing a material that was a Fast64 material before will transfer some data to SO and remove all Fast64 related data
+	- Added a Mass Initialize button in viewport sidemenu, this inits all materials as SO materials (the feature mentioned above also applies)
+	- Added dropdowns to choose the texture format of each texture
+	- Clamp and mirror are now texture tags instead of group tags
+
+- Updated Objex2 plugin to 2.6 (update it manually by importing BlenderScripts\io_export_objex2.zip)
+	- Initializing a material that was a Fast64 material before will transfer some data to Objex2 and remove all Fast64 related data
+	- Added a Mass Initialize button in viewport sidemenu, this inits all materials as Objex2 materials (the feature mentioned above also applies)
+	- Fixed an issue where everything was rendered black&white if it was used above Blender 3.0 version
+	Note: it still crashes if used above 3.4, so stay at 3.3 LTS or 3.4 for now
+
+- Texture tags can now also go in a Tags line inside the .mtl
+
+- Changed z64rom exit's default header to 0
+
+- Changed spawner's default variable to 0FFF
+
+- Updated the parameter values of wooden doors and sliding doors
+
+- Added an option to export a scene as C array to use in decomp based projects (no more support is planned besides this)
+
+- Changed so dummy points are added when attempting to preview a cutscene camera with less than 4 points and dummy points setting is enabled
+
+- Changed #AlphaMask tag to #MaskAlpha to avoid parse issues
+
+- Fixed an issue where trying to update Set Cutscene custom actor in the custom actor database would give a name conflict
+
+- Fixed an issue where multitextures would not be rendered in alternate headers
+
+- Fixed an issue where "there's no collision file!" error would sometimes appear when loading z64rom project
+
+- Fixed an issue where additional textures would be added multiple times when reloading a model
+
+- Fixed an issue where texture tag #ia16 would set the texture to IA8 instead
+
+
+--------------
+---1.54
+--------------
+
+- Added a new tool "Copy data between .zobjs" that allows transfering data between .zobjs, among other things this provides the ability to easily edit the gameplay_keep objects in z64rom
+
+- Added a new tool "Convert image or file to C array", with it you can instantly convert an image to N64 format and turn it into a C array
+
+- Added a new param "Decimal" in the property fields of actor.toml. Set it to true to turn the numeric box decimal
+
+- Cutscene Table Editor becomes Remove Cutscene Table when in z64rom mode, and it has been added in z64rom post-installation options (use actor 0x01E0 to start cutscenes)
+
+- Changed so .zroom is an allowed extension whith "import actors and objects from room" option, and also in io_import_z64.py plugin
+
+- Updated SO Blender export plugin, now supports Blender 4.1+ (thanks Dragorn421)
+
+- Fixed an issue where multitextures could get corrupted if a texture was deleted in the model, alongside possible crashes when loading a scene, WARNING from now on 2 textures cant have same filename!
+
+- Fixed an issue where the program would prompt an error if a z64rom actor attempted to load an object that was still not compiled
+
+- Fixed an issue where attempting to render multiple dlists in an actor.toml would sometimes prompt an error
+
+- Fixed an issue where the program would set its working directory as system32 when starting it from the start menu
+
+- Fixed an issue where View scenes (beta) would crash in MM mode
+
+--------------
+---1.53
+--------------
+
+- Added Custom Actor Database! download custom actors made by other people with ease! accessible in Tools tab (z64rom needed)
+
+- Instance focus (F key) now works with all kinds of instances, not just actors
+
+- Added a "Custom Actor" filter in the actor database, filter both custom actors and edited vanilla actors (Only works with z64rom)
+
+- Changed so custom actors no longer appear at the beginning of the actor database
+
+- Increased Actor Database filtering speed, and also loading speed after the first time by storing the data in a cache
+
+- Actor database now can setup multiple actors in real time without automatically closing, and added a "set on select" checkbox
+
+- Its now possible to write database notes for the custom actors in the actor.toml using the Notes tag (z64rom)
+
+- Actor.toml now supports multiple display lists (separated by comma), loading display lists and textures from vanilla zobjs and using hierarchys other than the first
+
+- SO will warn the user if they want to close the application or opening another scene without saving after changing collision, rooms, injecting or saving binary
+
+- Added "Overwrite debug savefile data too" option in Filesave creation editor (both binary and z64rom)
+
+- Updated SO export plugin to 1.1.0 (previous version was 1.0.8):
+	- Addressed an issue where it was impossible to keep group setting changes made inside SO when reloading model (1.0.9)
+	- Fixed a bug where camera ID was exported incorrectly
+	(install the plugin manually from BlenderScripts folder)
+
+- Installing z64rom now also creates binary data (used by a few of the editors) and applies the titlescreen values if selected
+
+- Flag log now displays actor variable
+
+- Fixed an issue where having a cutscene camera command without points would prompt an index error
+
+- Fixed an issue where "View scenes from rom (Beta)" always prompted an error
+
+- Fixed an issue where "Show Titlecard" did the opposite in z64rom exits
+
+- Fixed an issue where a crash message would occurr when trying to inject or reload a scene with no rooms or groups
+
+- Fixed an issue where breakable pot wasn't documented enough and always asked for object 0003
+
+- Fixed an issue where z64rom projects couldn't be used if the path had blank spaces
+
+- Fixed an issue where installing z64rom without creating a new scene would prompt an error
+
+- Fixed an issue with the autodetection of hierarchies when drawing actors
+
+- Fixed an inconvenience where the save button disappeared in filesave editor when in z64rom mode
+
+--------------
+---1.52
+--------------
+
+- Greatly reduced lag when rotating actors with the mouse wheel
+
+- Reduced lag when scrolling through the actor lists with the mouse wheel
+
+- Changed the logic where you had to select an instance with right click and then middle click before being able to rotate an actor
+
+- A yellow border shows up on the instance that can be interacted with middle click/wheel
+
+- Cutscene actor points Y rotation can be modified via mouse wheel
+
+- Instance axis is now only drawn if its ready to be interacted with middle mouse
+
+- Holding CTRL while dragging middle mouse now lets you move the selected instance from anywhere, good for actors that have their bounding box hidden by their 3D models
+
+- Additional lights default as point lights with radius one when added, as thats their most common use
+
+- Changed all textboxes of the actor controls into numeric boxes, allowing some advantages such as mouse wheel
+
+- Fixed an issue that appeared in 1.51 where it was impossible to edit multiple waterboxes if the room of one was set to a value different than 3F
+
+- Fixed an issue where all numeric fields would display an error when they have a value bigger than the maximum instead of adjusting it
+
+- Fixed an issue where SO would prompt an error if the mouse wheel was used after deleting all actors or waterboxes
+
+- Fixed an issue where play button could be pressed without creating a scene first
+
+- Fixed an issue where a compiled rom could be given when creating z64rom binary data, corrupting it
+
+- Fixed an issue where Flag Log crashed unless global rom or z64rom was being used
+
+- Fixed an issue where Flag Log crashed if an unknown actor ID was used in a room
+
+- Fixed an issue where the modifier keys to make the camera faster or slower would get stuck when interacting with the UI while moving the camera
+
+- Fixed an issue that appeared in 1.51 where some buttons were missing their icons
+
+--------------
+---1.51
+--------------
+
+- Added z64rom support to Initial Filesave Editor
+
+- You can now let SO install z64rom for you, simply go to File > Create new z64rom project.
+
+- Added new tag #ScaledNormals, this lets you define how light A/B affects the mesh by using a grayscale of vertex colors to define the normal map.
+
+- Injecting a scene on a rom bigger than 64 mb will trim its size to 64 mb. The purpose of this is to autotrim the popular "ZELOOTMA" debug rom.
+
+- The [Beta] tag of "Build and launch z64rom + warp to scene" is removed since the feature now properly works with the latest z64rom version
+
+- "Build and launch z64rom + warp to scene" now also saves the scene to z64rom, turning this option into 1 click to test
+
+- Added play button when in global rom or z64rom mode
+global rom mode: acts as a shortcut of inject + launch rom
+z64rom mode: acts as a shortcut of build and launch z64rom + warp to scene
+
+- Added a button in the actor database to search actors by vanilla category.
+
+- Turned some text fields into numeric fields
+
+- [MM] Fixed an issue where texture scrolling wasnt rendered
+
+- Fixed an issue where the flag value of texture animation conditions would reset to value 3F
+
+- Fixed an issue where it was impossible to import certain vanilla cutscenes
+
+- Fixed an issue where the scene name would lose the last letter if the scene was exported straight away after typing the name
+
+- Fixed an issue regarding simple texture swap animation
+
+- Fixed an issue where a texture frame animation couldnt have different frame timings
+
+- Fixed an issue where an error would show up if you cancel "select a base rom" window
+
+- Fixed an issue where "View scenes from rom (Beta)" didnt warned about the rom being compressed
+
+- (1.511 hotfix) Fixed not being able to save zzrtl scenes
+
+- (1.511 hotfix) Fixed not being able to open properly scenes saved in 1.50
+
+--------------
+---1.50
+--------------
+
+- Added the drop table editor from custom actor toolkit and gave it z64rom support. SO will create all the necessary hooks inside lib_user for you.
+
+- Added property Object in actor rendering (z64rom) to load a different object from the one assigned in init_vars
+
+- Added property Collision in actor rendering, its main purpose is for other actors to detect it when using "stick to ground", also gets rendered with show collision option enabled
+
+- Delete key can now be used any selectable element, such as actors. You must select the instance in the viewport for it to work.
+
+- Armos statues and all kind of dungeon switches are now rendered properly
+
+- (Beta) Enabled the unfinished .zscene viewer, saving is disabled
+
+- Fixed an issue where the property DisplayList in actor rendering (z64rom) didnt accepted hexadecimal offsets 
+
+- Fixed an issue where FC D9 E2 tags would always prompt an usage warning, being impossible to use them
+
+- Fixed an issue where reloading a single room that has less groups than before would lead to a crash
+
+- Fixed an issue regarding relative paths not being stored correctly inside saved scenes
+
+- Fixed an issue where a scene would crash in z64rom if the texture animation list was empty with advanced texture animation option enabled
+
+- Fixed an issue where a scene would crash if alternate headers had inherit texture animations enabled while the main header had an empty texture animation list
+
+- Fixed an issue where holding Z (or using the UI) to stick an actor to collision would not ignore #NoCollision tags
+
+- Fixed an issue where an error could show up when deleting pathways
+
+- The features that dont support z64rom now warn the user in z64rom mode
+
+- The setting "Disable Texture Warnings" will also disable texture resolution warnings
+
+--------------
+---1.49
+--------------
+
+- Added full z64rom support to pause screen map editor
+	- Make sure to be in z64rom mode before opening the editor
+	- Automatically creates all the necessary hooks inside lib_user for you
+
+- Added option to reset group settings on scene reload
+
+- Fixed an issue where the scene Name and other textboxes would revert back in some situations
+
+- Fixed an issue where moving chest icons by holding shift in the pause screen map editor would bring an error
+
+- Fixed an issue where visited floors pause screen maps weren't working correctly ingame (z64rom only), Thanks Jinnosuke
+
+- Fixed an issue where actors without a custom render and the 3D axis werent rotated correctly in the Z axis
+
+- [MM] Fixed an issue where SO didnt created any actor cutscene by default, leading to an ingame crash unless one was added manually
+
+- Fixed an issue where an scene could be rendered unusable if SO failed to locate multitexture files
+
+- Fixed an issue where group selection would be permanently invisible after closing optimize window (being invisible while its open is intended)
+
+- Auto-add transition doors now warns the user if scene scale is not set to 1.00
+
+--------------
+---1.48
+--------------
+
+- [MM] Added support for command 1B: Actor Cutscenes, you can find the UI by going in Pathways tab in Majora's Mask mode
+
+- Added property IgnoreRotation in actor rendering to ignore the rotation fields when rendering its model
+
+- [MM] Added the actor property IgnoreMMRot to ignore the rotation conversion, this also takes care of the bitflag values in Actor ID
+
+- [MM] Added the actor property NoMMYRot to display the Y rotation as degrees + camera ID regardless of ignore MM day/night system option
+
+- [MM] Added properties to chests, switches and torches
+
+- [MM] Switching to MM mode automatically enables "Force DMA on inject"
+
+- [MM] Default actor ID in MM mode is now rupee instead of butterfly
+
+- [MM] Added option to import Actor Cutscenes from .zscene
+
+- [MM] When importing cameras from .zscene in MM mode, it will pick them from the scene header instead of collision
+
+- Fixed an issue where adding or deleting rooms with reload would not add or delete rooms to the rest of the headers
+
+- Fixed an issue where error prompts would appear when loading scenes with no actors and objects
+
+- Fixed an issue where deleting objects in the UI would set the cursor position at 0
+
+- Fixed an issue where ScaleArray render property didnt worked in XML format (check actor 0x015F for example)
+
+- Fixed an issue where the actor render cache wasnt reseted when swaping between OoT and MM or opening an MM rom in global mode
+
+- Fixed an issue where properties of selected actor weren't refreshed when opening z64rom project or swaping between OoT and MM
+
+- [MM] Fixed an issue where set title card and set restriction flags buttons were visible in MM mode (they're only usable for OoT)
+
+- Fixed an issue where the global rom label wasnt properly anchored to window size
+
+- Fixed an issue where an error indicating that there's no collision file would show up if global rom / z64rom mode was used before opening a scene
+
+- Fixed an issue where unchecking global time and leaving the time at 00:00 would make it go back to global time enabled when swaping rooms
+ 
+- [MM] Fixed an issue where fixed cameras in MM weren't stored correctly in the scene file
+
+--------------
+---1.46
+--------------
+
+- Fixed an issue where saving a scene without activating N64 render during the session, or reloading z64rom after saving a scene would give a path error
+
+- Fixed an issue where the hotkey of holding shift to increase position/rotation by 20x more didnt worked
+
+- Fixed an issue where loading z64rom after pressing N64 render would not refresh the zobj models
+
+- Fixed an issue where adding a pathway would prompt an error till a point was added
+
+- Changed the controls popup to mention that F key focuses the camera on the active actor
+
+- When updating SO starting with 1.46, a Downloading... text will appear
+
+--------------
+---1.45
+--------------
+
+- Added setting to preview cutscenes without the black bars at the top and bottom of the screen
+
+- Added ScaleMask, ScaleTarget, ScaleArray, ColorMask, ColorTarget, EnvColorArray, PrimColorArray, RotY in actor.toml Render settings
+
+- Updated Blender io_export_so2 plugin to 1.07
+	- if a material has the same name as a texture (or contains it) when initializing the SO material, it will assign it to textel0 automatically
+	- the option to ignore material groups on export is back
+
+- Fixed an issue where z64rom actor.toml could not be loaded with certain directory names
+
+- Fixed an issue where hierarchy was mispelled as hirearchy in SO code, which made this property not load from z64rom actor.toml files
+
+- Fixed an issue where Yoffset could not be negative in actor rendering
+
+- Fixed an issue where SO would crash when clicking various buttons with no collision loaded
+
+- Fixed an issue where reloading model after saving would prompt an error
+
+- Fixed an issue where the chest actor would not display all item IDs
+
+- Fixed an issue where TextureOffsets wasnt implemented in actor.toml Render
+
+- Fixed an issue where badly modeled #Door groups would crash SO on inject
+
+- Fixed an issue where XYZ rotations were applied wrongly on the models since a few updates
+
+- Room tags will function even if they're followed by . or _, this avoids a common error with Blender appending .001 and _Collection in group names
+
+- Attempting to load build-dev.z64 will make SO suggest about opening z64project.toml
+
+- Removed debug prints to improve performance
+
+- Improved rendering of crystal switches, rupees and iron knuckles, and some actors like the scythe trap rotate in real time
+
+--------------
+---1.44
+--------------
+
+- Billboards and 2D billboards are now rendered inside SO viewport
+
+- Updated MM actor xml, thanks doncamilo!
+
+- Fixed an issue where actor.toml properties in z64rom projects wasnt working
+
+- Fixed an issue where SO would sometimes fail to warn the user about incorrect numeric tag usage
+
+- Added extra tooltip on billboard and 2D billboard checkboxes explaining how to use them
+
+--------------
+---1.43
+--------------
+
+- Added #Tint mesh tag (wasn't present due an oversight)
+
+- Command D9 (Geometry Mode) can now be customized via UI when clicking Customize button in group settings
+
+- Fixed an issue where vanilla modified actors in z64rom would appear twice in the actor database
+
+- Fixed an issue where scene names where not correctly displayed in cutscene editor
+
+
+--------------
+---1.42
+--------------
+
+- Added options to build and launch z64rom when in z64rom mode. [Beta] There's an additional one to warp Link directly on the scene you're editing, skiping titlescreen.
+
+- Entrance table editor now support z64rom, they will automatically open the .toml files in z64rom mode, and can also export tables to .toml format
+
+- Added "Save to binary" options in entrance table editor and cutscene table editor
+
+- Fixed an issue where opening rom 2 times without closing cutscene table editor would prompt an error
+
+- Fixed an issue with the starting room time when importing old scenes
+
+- Fixed an issue where the time of all rooms would be set to 0 if atleast 1 room had global time enabled
+
+- Fixed an issue where time could not be changed after opening a scene without rechecking global time checkbox
+
+- Fixed an issue where loading a z64rom project would not correctly detect custom actors and objects
+
+- Fixed an issue where saving a scene in a z64rom project, then deleting rooms and saving it again would make z64rom crash when building
+
+- Fixed an issue where exits could not be deleted
+
+- Fixed an issue where importing collision from zscene would rarely crash the program
+
+
+--------------
+---1.41
+--------------
+
+- Added feature to add objects on all scenes at once via the scene object tab
+
+- Added support for azerty and dvorak keyboards
+
+- Added #Echo collision tag
+
+- Rendered actors can now use prim color and env color (so actors like bronze boulder and fire are now displayed in their correct colors)
+
+- Fixed an issue where if 2 textures had the same filename but different folder it would display incorrectly in SO
+
+- Fixed an issue where SO wasnt compatible with the multitexture settings of the new blender export plugin
+
+- Fixed an issue regarding cutscene preview and dummy points
+
+- Fixed an issue where changing map scale during simulate n64 graphics would not refresh the viewport
+
+- Fixed an issue in the submap editor, where clearing all the maps did not set the amount of floors for each map to 0, causing issues on reload
+
+- Fixed an issue where the final map's floors in the submap editor were not saved
+
+- Fixed an issue where the imagedata for only the first 8 submaps was saved
+
+- Fixed an issue where texture swap animations couldnt be previewed when alpha was set below 255
+
+- Fixed an issue where pushable block actor would appear without texture
+ 
+- Editor properly clears all the map image data when "clear all maps" is used
+
+- The submap editor will now open even if a scene is not open
+
+- The submap editor will now automatically ensure that texture IDs given to floors are consecutive to minimize data usage
+
+- The "Auto Reload" setting can now be saved
+
+
+--------------
+---1.40
+--------------
+
+- Flag Log does not display empty flags, improved readability
+
+- YOff affects actor skeleton renders
+
+- Tracks recent Global ROMs and romtool projects
+
+- Rooms are renameable
+
+- Changed Reverb to Sound Space and added XML's for these
+
+- Added the necessary support for the current version z64rom to work
+	- Supports the new exit system that completely skips the use of exit table
+	- Global z64rom mode which lets you directly save into the project without having to constantly select the .toml
+	- Get actor properties and preview render info through 'actor.toml'
+
+- Reworked restriction flags, now you edit them per scene instead of having to modify a table
+
+- Reworked titlecards, now you set them per scene and SO handles the offsets instead of having to inject them manually
+
+- Added an option to only render waterboxes in general tab (enabled by default)
+
+- Added an option to toggle on/off texture warnings
+
+- Added color blind option in the dropdown menu (previously you had to edit settings.xml)
+
+- Changed direction params of environment lights so they're displayed as X Y Z values
+
+- Added camera direction to light direction copy buttons
+
+- Added value 0000 - None in special objects
+
+- Cutscene parameter changes affect camera while in the camera view mode (position changes, fov, roll)
+
+- Cutscene Add Position now inserts the added position after the selected position
+
+- You can now switch with a numeric selector at the top of the window
+
+- You can now select rooms and groups by holding ctrl and right clicking on a room in the viewport
+
+- Fixed an issue where changing a texture animation to "texture swap" in n64 render mode would give an error message
+
+- Fixed an issue where you could not add an animation type "texture swap animation" while n64 render mode was enabled
+
+- Fixed an issue where waterboxes would turn opaque after playing a cutscene
+
+- Fixed an issue where the camera would move awkward if you pressed middle click while having no rooms
+
+- Fixed an issue where scenes would crash if no animated texture command was added
+
+- Fixed an issue where the UI would not be correctly refreshed after saving to binnary when an alternate header was selected
+
+- Fixed an issue where alternate headers could not have their own texture anims despite the inherit checkbox being unchecked
+
+- Fixed an issue where an alternate header that clones the main header could lead to a crash
+
+- Fixed cutscene camera preview to be more accurate
+
+- Fixed camera preview to restore previous FOV
+
+- Fixed the inequality where collision and texture tags were case sensitive while mesh tags werent
+
+
+--------------
+---1.34 
+--------------
+
+- Added partial support to z64rom projects (save binary and patches)
+
+- Exits are now caped at 0x1F instead of 0xF (twice the amount), #Exit tag now uses 2 digits
+
+- Added #IndoorEnv tag, with this tag you can select a single environment ID instead of 4 at once, which is useful in indoor maps (A/B light disabled)
+
+- Added support to crawlspaces by giving camera type 0x1E a Page 2 button to setup crawlspace positions (undocumented values)
+
+- Changed the way alternate headers work, they can now inherit from any other header instead of only the previous one
+
+- Textureless mesh is now supported (supports normals+prim color, transparency, vertex color, vertex alpha)
+
+- Optimized display lists to use 2 less commands, reducing the size of room files
+
+- Added a button in group settings to fully customize display lists. Note: this feature is still experimental.
+
+- Added texture tags to force specific formats, available formats: #RGBA16 #RGBA32 #IA8 #IA16 #I4 #I8 #CI4 #CI8
+
+- Improved reload button by keeping settings of groups that have different tags from the last import, for example Ground01 is linked with Ground01#Stone
+
+- Autofix errors feature will now automatically clear dma table if its not cleared (OoT) and apply ram patch if its not applied (debug rom)
+
+- Rewrote color blending animation, made it match SO's viewport 1:1 and added an alpha field (you will need to apply the advanced texture anim patch again)
+
+- Fixed an issue where importing actors and objects from a zmap would sometimes give an error message
+
+- Fixed an issue regarding vertex color + vertex alpha + RGBA textures
+
+- Fixed an issue where advanced texture animations would make alternate headers crash the game
+
+- Fixed an issue where some transparent textures couldnt be detected as IA8
+
+- Fixed an issue where opaque grayscale textures couldnt be detected as I8
+
+- Fixed an issue where the viewport would not refresh if reload button was pressed while in N64 render mode
+
+- Fixed an issue where #Door and #BlackPlane tags couldnt be used with TAG_ prefix
+
+- Fixed an issue where texture tags on the first texture of an obj file were ignored
+
+- Fixed an issue where opening old xml's with advanced texture animations enabled would sometimes give constant errors
+
+--------------
+---1.321
+--------------
+
+- Fixed an issue where cancelling to open an scene would lead to an error when trying to open a recent scene
+
+- Fixed an issue where being in single texture swap tab while having no additional textures added would lead into an error 
+
+--------------
+---1.32
+--------------
+
+- Added support to a hack that allows creating custom scene functions inside SO along with a new tab (OoT debug ROM only). Features:
+	- Scrolling textures
+	- Color blending
+	- Changing textures
+	- Special camera effects
+	- Conditional draw
+	- All the above can react to flags, such as switch flags, time of day, global flags...
+
+- Custom render functions and MM scrolling textures can be visualized with N64 render mode
+
+- Added new 2 patches
+	- Advanced texture animations (this one is required for the new system of texture animations to work, thanks a lot to z64me, the one who coded it!)
+	- Extend dynapoly vertex limit (in OoT, placing a lot of actors with collision such as 30 stalactite crashes the game, this is due the game only allowing 512 vertex of actor collision. This patch increases it by 8 times more)
+
+- Autofixer now also checks for the following stuff:
+	- If using point lights without point lights patch or 2D billboards, it will apply the respective patch
+	- If using custom texture animation functions, it will apply the respective patch
+
+- You can now import .gif images in the additional textures tab, SO will save each frame as .png files and import them separately
+
+- Holding SHIFT while clicking on Reload button will allow loading a different .obj file while maintaining everything such as actors and group settings
+
+- Added an option to reload XMLs in Extra tab, use it to update changes you made in the game XMLs such as ActorNames.xml without having to restart SO
+
+- All extra editors such as entrance table editor no longer freezes main SO window so you can have them opened in the background
+
+- Fixed an issue regarding MM texture anims
+
+- Fixed an issue where transparent meshes with vertex colors and no multitexture would look glitched ingame
+
+- Fixed an issue where collision triangles with identical vertex / edges would be written to the zscene, resulting in the game crashing when Link step on them
+
+- Fixed an issue where SO accounted #NoCollision vertex when throwing the 8192 vertex warning as well as making the game crash by pushing vertex IDs past 8192
+
+- #Doublesided collision tag removed (this tag served as an early version of #Door tag and was bad practice since Link can go past a doublesided collision with a jumpslash)
+
+- Opening an MM rom as global rom now switches SO to MM mode
+
+- Fixed an issue where minutes and hours in room env were not saved propertly
+
+- Fixed an issue that would occur sometimes if you deleted additional textures
+
+- Fixed an issue where autofix errors feature wasn't applied when saving to binary
+
+- Fixed an issue where reloading room model would not apply mesh tags
+
+- Fixed an issue where reloading room model would not keep previous settings
+
+- Fixed an issue where I4 textures were wrongly detected as CI4
+
+- Fixed an issue where reload button wasnt checking relative paths
+
+- Fixed an issue where selecting compressed roms when injecting or opening global rom would show non-helpful error messages, now it explains how to decompress the rom
+
+- Fixed an issue where opening a scene with N64 render mode enabled would show the scene invisible till you clicked render again
+
+--------------
+---1.30
+--------------
+
+- Added a button to play cutscene camera commands. It takes dummy points into account. Not 100% accurate to ingame, but close.
+
+- Added an option to add an object to all rooms in extra tab
+
+- Completely reworked prerendered scene system:
+	- Its now located in Scene Env
+	- You can add more than one background. This makes it possible to have different backgrounds per scene unlike before
+	- You can preview them by assigning them into scene cameras
+
+- Added buttons in scene cameras to copy viewport and visualize in viewport, and renamed unk1 to background
+
+- Added a field to set room ID in spawners (0xFF = original SO raycast detection)
+
+- Changed additional point lights so they no longer draw a billboard (debug rom)
+
+- Added a new patch that enables 2-axis billboards and allows point lights from additional lights to be able to affect mesh (debug rom)
+
+- Added checkbox to disable start time and changed start time format so now it appears as hours and minutes
+
+- Added a toggleable setting to autofix or help fixing common errors. Does the following:
+	- Warns about transitions leading to nonexistent rooms, and sets them to 0
+	- Warns about transitions having nonexistent cameras, and sets them to FF
+	- Warns about prerendered scenes not being setup correctly, and fixes them
+	- Warns about entrance cutscene entry being present without any cutscene, and removes the entry
+	(will add more depending on common questions people make)
+
+- Added a checkbox to find an injection offset (very basic, only for beginners)
+
+- Fixed an issue where an array out of bounds error could appear while switching header in cutscene tab
+
+- Fixed an issue where game would crash when going from a room with unused lights to a one without
+
+- Fixed an issue where alpha mask and render last checkboxes were not saved when saving scene to xml
+
+- Fixed an issue where grayscale textures bigger than 64x64 would always be detected as transparent textures, getting the format I4 instead of CI4
+
+- Fixed an issue where importing actors from zmap without rooms would crash SO
+
+--------------
+---1.28
+--------------
+
+- Now you can move the camera up or down by pressing Q or E
+
+- Added more options for actor rendering (animation ID, special textures, Y offset)
+
+- Added a checkbox to set multitexture alpha masking, requires the option to not convert multitextures to RGBA
+
+- Added a checkbox to make the group render last, useful for transparency sort (the checkbox was already there but was not functional)
+
+- Fixed an issue regarding pause menu editor and room discovery flags
+
+- Fixed an issue regarding zzrtl config.txt naming and path
+
+- Fixed an issue where folder names would be in hex when targeting zzromtool mode, which isn't supported
+
+- Fixed an issue where additional textures were not detected in the root of the xml, unlike the others. This makes transfering xmls easier.
+
+- Fixed an issue where MM cutscene cameras were corrupted with dummy points setting
+
+- Fixed the actor rendering of chests, golden skulltulas, silver boulder, among others
+
+- Fixed an issue where exported zobjs would write DE commands only if the selected scene function had it
+
+- Fixed an issue were duplicating transition actors without shift would always set backroom to 1
+
+- Fixed an issue where exporting to binary sometimes would attempt to export as xml
+
+- Fixed an issue where negative camera rolls in cutscenes would crash the game
+
+- Fixed an issue where env color was not reseted correctly causing multitexture groups to affect the colour of other groups depending on order
+
+- Fixed an issue where TGA textures were not correctly converted as PNG, now it works as intended
+
+- Vertex alpha is now completely ignored when the group has 255 transparency
+
+- The io_import plugin has been updated (thanks Dragorn421)
+
+- Clear dma table now warns about setting the emulator back to 8mb
+
+- The first time a new scene is created, the controls window will show up
+
+- An error message will show up if you try to launch ROM without emulator
+
+- [Debug] Added vertex normals checkbox (calculates the normals of the group using black and white vertex colors)
+
+
+--------------
+---1.26
+--------------
+
+- Added an option to skip RGBA32 detection completely
+
+- Using Global Rom mode unlocks Launch ROM without having to inject an scene first
+
+- The option to pick Link's age in title screen is now unlocked
+
+- Added color blind setting (xml only), turns red axis into dark gold and lime axis into cyan
+
+- A few changes to zzromtool binary save:
+ - zzrpl is now supported
+ - save property inside conf.txt is now set to the scene id instead of 1
+ - if global rom is used, restriction flags inside conf.txt is now set to the restriction flags of the scene
+ - the folder gets renamed if it already existed under another name
+
+- If an additional texture is not found when opening a scene, an error message shows (temporal fix till I can do something better)
+
+- Fixed an issue where #Speed tag crashed SO on inject
+
+- Fixed a bug where importing actors from a binary file in MM with ignore day/night system resulted in incorrect rotations
+
+- Fixed troubleshooting webpage
+
+- Fixed a bug regarding deku sticks upgrade in savefile editor
+
+- Fixed a bug where restriction flag editor end offset was incorrect and didn't displayed all scenes
+
+- Fixed a bug where the last row of cutscene table editor wouldn't be saved
+
+
+Known bugs:
+- Pause menu map editor doesn't display revealed rooms correctly ingame
+- Broken additional texture paths can only be fixed by editing the xml directly
+- Sometimes SO is unable to open recent files
+- Some bug regarding texture transparency on MM texture animations
+- Chests are sometimes rendered incorrectly
+
+
+
+--------------
+---1.252
+--------------
+
+- #ForceRGBA tag now forces RGBA16 instead of either RGBA32 or RGBA16
+
+- Fixed an issue where all scene cameras injected at missaligned offsets, and unknown fields didn't default to 0xFFFF in older xmls
+
+
+--------------
+---1.25
+--------------
+
+- Added mesh flags, using these flags makes the groups start with settings enabled, they can be seen in ModelFlags.xml, can't be renamed
+
+- Added an option to set a group to use env color instead of prim color, for scene render function purposes
+
+- Added 2 unknown fields in cameras, the first is used to change JFIF backgrounds, and both are used for crawl holes (0x1E)
+
+- Added LOD (Level of Detail) settings
+
+- Added option to draw only selected cutscene commands
+
+- Added error messages of bad usages of all collision tags
+
+- Added support to RGBA32 textures, Max size 32x32
+
+- Added Smooth RGBA ledges. This feature is kinda broken due N64 limitations so it only works for background meshes, such as mountains or trees.
+
+- Added support to Majora's Mask cutscenes (but they don't play ingame, help would be appreciated)
+
+- Added an option in Majora's Mask mode to be able to manually set the days the actors spawn. New properties will be shown in the boxes.
+
+- Added 2 Majora's Mask exclusive collision tags: #FrontFlip #SideFlip
+
+- Fixed an issue where buttons disappeared when resizing Flag Log window
+
+- Fixed an issue where older xml scenes with consecutive inject disabled injected at address 02D00000
+
+- Fixed an issue where 02 header command in MM was always empty
+
+- Fixed an issue where scene cameras didn't worked at all in MM, also documented most scene cameras of MM
+
+- Fixed several issue with File Save editor: didn't applied double defense flag correctly, child link and adult link items were swaped, skulltula counter wasn't saved correctly
+
+- Fixed the combination of vertexcolor + vertexalpha + multitexture
+
+- Fixed an issue where Reload button wasn't able to add more rooms than what the original file had
+
+- Fixed a few path issues for Linux systems, unfortunately the xml dll is closed source so scenes can't be saved in Linux (wine untested)
+
+- Updated OoT actor database, thanks doncamilo
+
+- Added 76 more actor renders in OOT
+
+--------------
+---1.23
+--------------
+
+- Spawner now renders adult link, or child link if you enable the option
+
+- Transition actors can now render iron bars and key holes
+
+- Switch flag log window now has a refresh button
+
+- SO no longer locks textures used in rooms (if you edit the textures, they will not refresh until you reload the model)
+
+- TGA textures are now converted to PNG on room import
+
+- Added a custom version of blender plugin to import zmaps and zobjs (io_import_z64.py). Imported maps will have the true ingame scale, and if clamp and mirroring are disabled the textures will have #Clamp and #Mirror tags automatically for SO.
+
+- Added viewport FOV parameter, view button in cutscene cameras updates the fov value
+
+- Scene number is now uncapped, placing a very high value will break the rom so be careful
+
+- Fixed a bug with texture tag #ForceRGBA not working
+
+- Fixed a bug where injecting while having an alternate header selected caused refresh issues
+
+- Fixed a bug where non-transparent actors in alternate headers were not rendered
+
+--------------
+---1.22
+--------------
+
+- Changed autoupdater server, so hopefully it goes faster now (thanks denofilions)
+
+- Around 15 more actors are rendered now, actor database slightly upgraded (thanks Hylian Modding)
+
+- Added Save button to filesave editor, cutscene table editor, entrance table editor and restriction flags editor
+
+- Added the option to configure respawn scenes and skulltula tokens in filesave editor
+
+- Documented the unknown column in entrance table editor
+
+- Added option to not convert multitextures to RGBA
+
+- Added ROM mode, you can enter it by clicking on Classic button, you will have the following advantages while in ROM mode:
+	- Inject to ROM and Tools tab editors will no longer ask for a ROM and will all target the same one
+	- Exits will show which scene ID they're pointing to
+	- Unknown actors will be renamed to Custom Actor if custom actors are detected in the ROM, and their main assigned object will be added on inject
+	- Unknown objects will be renamed to Custom Object if custom objects are detected in the ROM, and their object size will be displayed
+
+- Patch rom to remove debug rom features now removes even more features
+
+- New tag: #WaterStream, use it for conveyor surfaces with waterboxes on top
+
+- Removed options to manually inject rooms, now they will always inject after the scene
+
+- Fixed a bug where Save to binary option required a file to exists
+
+- Fixed #Room #NoMesh and #Door tags to work with TAG_ (sketchup)
+
+- Fixed a bug where scenes with environment color skybox could not be loaded without pressing new scene first
+
+- Fixed a bug where vertex alpha didn't used normals correctly ingame (still glitched inside SO viewport)
+
+- Fixed a bug where starting equipment was not loaded in file save editor
+
+- Fixed a bug where Dive radio button in polytype tab was impossible to select
+
+- Fixed a bug where restriction flag editor didn't accounted certain bits of vanilla scenes
+--------------
+---1.2
+--------------
+
+- Added pause screen map editor (OoT)
+	- Able to edit everything inside pause screen maps, such as floors, chest icons, skull position...
+	- Also able to replace the title cards of the maps
+	- Button to detect the chests and boss door you placed in the map you're editing in SO, but you will have to reposition them
+	- For now, the sum of all floors in all dungeons can't surpass 34, this is a vanilla limit that can only be removed with asm
+	- Issue: the map image inside the editor has refreshing problems, similar to the start file editor
+
+- New group setting: Ignore Fog
+
+- Skyboxes are now rendered (time changes and fog color tint are not emulated)
+
+- Background color now changes to the fog color of selected environment when skybox is set to 1D in OOT or 08 in MM
+
+- Added texture tags: #ClampX #ClampY #MirrorX #MirrorY #Special, you can place them inside texture names and they will override SO group settings
+	#SpecialX tag (where X is a number) ranges from 0 to 9, scene functions that have day/night textures uses a pair of 2 IDs for each bank
+
+- Added the ability to use different animation banks from a single function
+
+- Actor database now displays the required door objects depending on scene ID
+
+- Added a button to display which switch flags are being used in the scene
+
+- Around 15 more actors are rendered now
+
+- Save to binary can now print offsets, has modern window and exported files have ZRE nomenclature
+
+- Save to binary can target a .zzrp file and take care of zromtool filesystem
+
+- Allow MM texture anims to be configured
+
+- SO is now able to import .DAE files (unstable, don't use it except for helping me finding bugs, if you use blender it only works with 2.79 and above)
+
+- Stick to ground hotkey now works with pathway points
+
+- N64 render mode is now less dark
+
+- Cutscene camera commands now place 2 invisible dummy commands at the start, meaning you have to remove them in older cutscenes to make them look like before
+
+- Added options to patch debug rom features, extend ram and fix common issues (Tools tab)
+
+- Fixed a bug where vertex alpha dlists were not forced to be a translucent display list
+
+- Fixed N64 render mode so transparent groups and actors no longer disappear depending on their position in group list / actor list
+
+- Fixed actor rendering so they no longer pick textures from other actors
+
+- Fixed an issue with "show rotations as hexadecimal" affecting position not rotation
+
+- Fixed #NoMesh tag not working with TAG_ in front
+
+- Fixed #room1 issue when loading an xml, you can now use that tag if you have more than 9 rooms 
+
+- Fixed actor database descriptions not having jumplines when blue text appeared
+
+
+
+--------------
+---1.11
+--------------
+
+- Added an option to import transitions and spawnpoints from a zscene
+
+- Added an option to import pathways from a zscene
+
+- Animated checkbox in MM mode now loads a decent animation ingame. You can't still configure it yet
+
+- Corrected MM skybox options
+
+- Improved MM default cameras
+
+- Clear dma table is now available to all roms
+
+- Fixed a bug with #room tag not working correctly past room 9
+
+--------------
+---1.1
+--------------
+
+- Added new collision flags and their respective tags
+
+- Expanded actors, transitions and spawns with property boxes (only OoT for now)
+
+- Added new buttons in cutscene camera editor to move the camera to viewport and viceversa
+
+- Added buttons to move items up and down in cutscene camera, cutscene actor, cutscene textboxes and pathways
+
+- Shift+Add Point in cutscene camera editor now takes care of the focus point too
+
+- Added billboard settings in group checkbox. Do note that 2-axis billboard is MM only, but you can apply a patch for debug rom in Tools tab
+
+- CRC calculation process is now done directly by SO to avoid problems with Windows rights
+
+- A few more actors are rendered now
+
+- Reload button now also reloads collision file
+
+- Added full support to Majoras Mask U 1.0
+
+- Added Restriction Flag Editor for Majoras Mask J 1.0 and U 1.0
+
+- When on Majoras Mask mode, starting scene number is 0x12 and starting inject offset is 0x02000000. On adding rooms, wind defaults to 0.
+
+- Majoras Mask scene names are now correctly displayed in Entrance Editor (remember to set the mode to Majoras Mask first)
+
+- When removing all scenes from a Majoras Mask ROM, you're asked if you want to start file on scene 0x12
+
+- Added some params to add an entry to cutscene table directly
+
+- When creating a new scene, now only comes with 8 environments, 4 for default env and 4 for waterbox
+
+- Fixed Z-depth issues with intel graphic cards
+
+- Fixed vertex colors defaulting to the first color in the map if no vertex color were painted in that group. Now they default to White.
+
+- Fixed SO not recognizing the amount of colors of IA textures correctly
+
+- #Polytype tag now has 2 digits instead of 1, added error message in case 1 digit is still being used
+
+- Fixed tags with similar names (WoodPlank -> PlankWood, ShallowWater -> ShallowWater1, KillingQuicksandNoJump -> NoJumpKillingQuicksand, LadderTop -> TopLadder)
+
+- Fixed Direction and Speed tags not working at all
+
+- Fixed a crash regarding cutscene actor tab
+
+- Known bug: If you edit an obj file that is being used in an xml, and you load the xml after that, the group settings will break. To avoid that, edit it while SO is open, then press Reload button.
+
+
+
+
+--------------
+---1.03
+--------------
+
+- Fixed a weird outline with transparent textures on angrylion plugin and real hardware
+
+- Fixed a bug regarding actors not rendered correctly when all 3 rotations were not 0. This also affects all cubes and triangles.
+
+- Updated some actors in the database
+
+- April fools features
+
+
+
+--------------
+---1.02
+--------------
+
+- Fixed a bug where SO tried to look for autosave.xml and recentfiles.xml in system32 folder
+
+- Fixed a bug where settings.xml generated from SO 1.00 caused issues
+
+- Fixed a bug with Reload button crashing in most situations
+
+- Fixed a bug with multitexture rarely becoming full black in outdoor maps
+
+- Multitexture combobox now doesn't cut the name of the textures if they're too long
+
+- Added error message when you try to import a model without the good export settings
+
+- Added error message when you try to import multiple rooms using a model with incorrect #Room tags
+
+- Added an option to display all rotation values in hexadecimal (actors, transitions, spawns, cameras, cutscene actors), negative values start with FFFF
+
+--------------
+---1.01
+--------------
+
+- Fixed import cameras and waterboxes debug feature only importing 3 cameras
+
+- Fixed Reload button, now it should correctly remember the settings (EDIT: It didn't worked until 1.02) 
+
+- Removed old rendering option and rolled back the changes. This makes vertex alpha not visible in non-vertex color scenes, but they will still work ingame.
+
+- Fixed 8 byte padding issue with rooms, which made ROM compression not viable
+
+- Spawn point room detection now ignores #NoCollision tag
+
+- CRC console no longer appears to avoid confusions and SO will complain about admin rights if it fails
+
+--------------
+---1.0 (beta)
+--------------
+
+- Added automatic DMA table update for OoT 1.0 and MM J 1.0, giving full support to the retail ROMs
+
+- Added an option to export save file data to binary format
+
+- Scene header index is now anchored to the top right of the window
+
+- Zobj export option now writes collision, and displays the collision offset and all the dlists offsets (useful for custom actors). 
+
+- Added #Raw tag, format is #Raw0000000000000000 where the zeroes represent the polytype in raw format
+
+- Added an option to convert the collision of a zscene into SO format
+
+- Added an option to import cameras and waterboxes from a zscene
+
+- Blank scene space now also affects zobj, useful for replacing limbs of existing zobs
+
+- Undo and redo shortcuts work again. Do note that this is still a beta feature, only works with actors transitions and spawns.
+
+- Added decal option in dlist
+
+- Multiply degrees option now works with cutscene actor rotations
+
+- When rendering with n64 render button, normal light maps are more illuminated and render vertex alpha correctly
+
+- Waterbox property values are now splited
+
+- Reload button now keeps settings of groups named the same as before
+
+- Added option in Tools to decompress roms
+
+- #Door tag now creates collision much similar to original doors
+
+- Fixed a bug where extract texture in the title card replacer could only use an existing image as filename target
+
+- Fixed a bug where set actor button from actor database would trigger a crash when used in spawnpoints
+
+- Blender plugin updated (remember to update it!)
+	- now correctly checks if your version is incompatible with vertex alpha
+	- has good export settings by default
+	- skips writing the second group name
+
+- Fixed clamping option in groups not working
+
+- Fixed a few actors in the database (doors, kokiris, breakable pots, time blocks, skulltulas, and many others)
+
+- Fixed a bug where SO would spam error messages if you had a deleted exit / environment assigned in a polytype
+
+- Fixed a rare case with IA-8 textures being detected as 17 colors instead of 16
+
+- Fixed vertex alpha + multitexture
+
+- Fixed a crash when deleting commands in cutscene editor
+
+- Fixed #Room tag being case sensitive (but I don't suggest it)
+
+- [Temporal] Fixed texture corruption by disabling palette sharing between textures
+
+- Now tries to convert invalid texture resolutions to rgba
+
+- Changed some labels that were confusing
+
+- Easter egg is harder to trigger by accident
+
+
+--------------
+---0.977 (beta phase 8)
+--------------
+
+- Added New File Save Editor! here you can pick which items link should have when starting the game. You can also change the title screen entrance here.
+
+- Added an option to add custom free space inside the scene file
+
+- Added #NoLedgeJump, #NoLedgeClimb, #Snow, #WallDamage, #GroundDamage, #ForceClimb, #MidairAnims, #ISG collision flags (last 4 are tag system only)
+ 
+- Added #NoMesh tag for the mesh file, useful for having collision and all rooms on the same obj file
+
+- Added an option to triplicate collision boundaries (fixes some weird bugs with small collisions)
+
+- Added a reverse light option, basically you can now set certain mesh groups to use vertex color if your scene uses normals, or viceversa
+
+- Added ShiftS / ShiftT params for primary texture (this feature was unintended)
+
+- New rooms now have haunted wasteland wind values by default, and renamed the haunted wasteland wind option to "Reset wind values"
+
+- Fixed autoadd object for Poe, Anubis and Warp Pad
+
+- Fixed a bug where disabling display offset prevented cutscenes from being injected
+
+- Fixed a bug where you couldn't move waterboxes without having cameras
+
+- Fixed multitexturing with transparency
+
+- [Current bugs] (don't report them again): 
+		multitexture almost never works correctly unless you use 32x32 textures with the same format
+		sometimes 64x64 textures get their palette glitched for unknown reasons
+		the inventory image from save editor disappears until you move the mouse
+
+--------------
+---0.976 (beta phase 7)
+--------------
+
+- Added 2 new collision flags in the poly tab as well as their respective tags (#Ice, #KillingQuicksandNoJump)
+
+- Added collision movement, in which you can make link move to specific direction when steping on it. 
+	Also added tags for it: #Direction00 and #Speed0, where 00 and 0 is the amount in hex
+
+- Added an option to export all textures to a pixelated format (smooth texture shading off)
+
+- Fixed a bug where multitextures couldn't be saved into the xml at all
+
+- Polytype flags now treats TAG_ as # symbol (for sketchup users ¬¬')
+
+- A few rendered actors now show matrices propertly (failed attempt, it was meant to fix all of them)
+
+- Scene ID now caps at 6D, preventing ROM corruption if people used non-existing IDs by mistake
+
+- Renamed Fog Unknown to Transition Speed
+
+- An error message will appear if you attempt to open the 64 bit executable without renaming it first
+
+- An error message will appear if a mesh or collision vertex is further than 32767 units on both sides
+
+- An error message will appear if the imported collision has more than 8191 vertex
+
+- Polytype environments now have the correct documentation in the tooltip
+
+
+
+--------------
+---0.975 (beta phase 6)
+--------------
+
+- The application now requires NET framework 4.5 instead of 4.0
+
+- Added alternate headers. This is a list of all the tabs and how they are handled:
+	- General: Everything is shared with normal header, except the prerendered image path
+	- Rooms: Everything is shared with normal header
+	- Scene Env: Duplicated when you add the alternate header, all values are independent
+	- Room Env: Duplicated when you add the alternate header, all values are independent
+	- Collision & Exits: Everything is shared with normal header
+	- Transitions & Spawns: Duplicated when you add the alternate header, all values are independent
+	- Pathways: Duplicated when you add the alternate header, all values are independent
+	- Objects & Actors: Duplicated when you add the alternate header, all values are independent
+	- Cutscene: Blank, all values are independent
+The autoadd objects feature also detects missing objects in the alternate headers.
+Adding or deleting rooms on the main header will reset the rooms of all the alternate headers. Reload button will do it if the amount of rooms change.
+
+- Added 3 new collision flags in the polytype tab, as well as their respective tags (#IgnoreCamera, #IgnoreActors, #IgnoreProjectiles)
+
+- Added a debug option to import environments from .zscene files (useful for copying environments from vanilla scenes)
+
+- Added a debug option to import actors and objects from .zmap files (useful for researching cutscenes)
+
+- Fixed a bug where SO crashes when you create a new scene while having the n64 rendering enabled
+
+- Fixed a bug where SO crashes when canceling a scene opening, and then opening another
+
+- Fixed a bug where actor files were loaded into the RAM regardless of having actor rendering enabled or not
+
+- Fixed a bug where SO crashed when adding environments since beta phase 5
+
+- Fixed a bug where SO crashed when deleting the selected environment
+
+- Fixed a bug where #Exit tag wrote the wrong information
+
+- Fixed a bug where sometimes SO crashed when opening an xml after editing the model. Also decreased the filesize of the xmls.
+
+- Fixed a bug where save to binary option crashed if you opened the old file with a hex editor
+
+- Fixed a bug where save to binary option was reusing old data from previous exports if filename was the same
+
+- Exit, transitions and pathway commands are no longer written if there's no exits, transitions or pathways in the scene, and wind command is not written if all 4 wind values are 00
+
+- The previous title card fix didn't work, so I'm doing another attempt. This time it has another algorythm to import the font, and if it still fails, Arial font will loaded instead, so people without windows 10 can atleast use the import button.
+
+- New tags from previous update weren't documented in the xml, now they do. Also fixed a few incorrect ones, like grass and carpet
+
+- Autoadd objects will now delete objects 0000-0003 while warning you
+
+- Added print offsets on inject option. This prints the cutscene offset, the start and end offsets of scene and rooms, and in the case of MM, the dma offset
+
+- Zobj exporter now allows banks 0x04 and 0x05
+
+--------------
+---0.974 (beta phase 5)
+--------------
+
+ - Added 4 new collision tags: #Environment<number> #NoCollision #DoubleSided and #Polytype<number>
+
+ - Around 10 more actors are rendered now
+
+ - Fog distance is now splitted in 2 fields
+
+ - Scene id is now in hex
+
+ - Majora's mask actors rotation are now correctly converted, and they will always spawn on all 5 days (provisional)
+
+ - Added new config fields and a blurry effect to the title card editor
+
+ - Title card editor SHOULD not crash on versions lower than windows 10 (untested)
+
+ - Added option to disable cutscene camera dummy points (use it to edit vanilla cutscenes only)
+
+ - Fixed a bug where SO crashed when trying to render meshes with no uv coords
+
+--------------
+---0.973 (beta phase 4)
+--------------
+
+
+- Added restriction flag editor (only OOT). This is an independent addon like the entrance table editor, meaning you have to pick a ROM.
+
+- Added support to TGA texture format
+
+- Added a way to add textures directly to the scene (for multitexturing)
+
+- Added more cutscene actors and misc actions
+
+- Around 20 more actors are rendered now
+
+- Added 3 more scene rendering functions
+
+- Exporting to zobj now ignores dlist culling setting
+
+- Blender export script no longer replaces the normal blender .obj exporter
+
+- Blender export script now "supports" vertex alpha (unofficial blender version required)
+
+- Fixed a bug where it was impossible to switch to MM mode since 0.971 (nobody cares about MM lol)
+
+- Fixed a bug where entrance editor didn't saved anything at all in MM mode
+
+- Fixed a bug where importing cutscenes crashed the application when camera roll was higher than 127
+
+- Fixed a bug where undo would crash the application when pressed very fast
+
+- Fixed a bug where you could still select cutscene stuff after deleting all the commands, causing the application to crash
+
+- Fixed a bug where actors could be lost if you scrolled the mouse wheel very fast (you will notice certain lag now, its a side effect)
+
+- Fixed a bug where duplicating an actor with shiftclick would make its coordinates go back to the previous actor if not moved with the mouse
+
+- Fixed a bug where textures were written multiple times, increasing the scene file size
+
+- (probably rolling back this since it lags) Fixed a bug where N64 rendering was not updated when making changes to the groups
+
+- Ancient bug spoted: Multitextures only works in RGBA mode, and SO converts the particular textures when enabling multitexture. While I'm trying to fix this bug, use only rgba textures for multitexturing.
+
+--------------
+---0.972 (beta phase 3)
+--------------
+
+- Fixed a minor bug where reloading a room didn't reseted the settings correctly
+
+- Adding cutscene textboxes defaults to message 0xFFFF (idle textbox), and all the cutscene commands now defaults at 1 frame
+
+- Cutscene actors rotation values can now be incremented by 1820 units when holding shift, and react to Z and X buttons when moving with mouse
+
+- SO no longer requires internet conection or hylianmodding website to be up in order to run
+
+--------------
+---0.971 (beta phase 2)
+--------------
+
+- Fixed a critical bug where sometimes the scene XML wasn't saved (the reason of this release lol)
+
+- Fixed a bug where multitextures displayed a lot of error messages
+
+- Fixed a bug where the import cutscene binary function crashed when importing cutscenes with multiple camera markers
+
+- Fixed a bug where cutscene textboxes ID message were unstable and changed into random values
+
+- Fixed a bug where cutscene music IDs were missaligned by 1 unit
+
+- Fixed a bug where cutscene camera points and pathway points sometimes displayed gargabe decimals
+
+- Resizing waterboxes now goes in increments of 20 as intended, not 120
+
+- Waterboxes center point when resizing them is now at the center (Killgore suggestion)
+
+- Added an option to export the cutscene as binary format (Cado suggestion)
+
+- Added an option to export the current room as a zobj with bank 6 (Cdi suggestion)
+
+- Added some new scene rendering functions, all preexisting functions now support multitexture, and improved the description of all of them
+
+- Added some cutscene actor commands 
+
+- Added description for all the cutscene transition effects
+
+- Added some cutscene misc actions
+
+- Added new cutscene marker: Set Time
+
+- When creating cutscene camera points with shift click, the camera is now created at the exact viewport position, just like with collision cameras
+
+- Frame duration of cutscenes, textboxes and actor actions are now numeric fields, as well as fov and camera roll
+
+- Cutscene actor actions now allow setting rotation values (do note that Y rotation is updated automatically if you make them move)
+
+- More actors are rendered now (nearly all enemies, jabujabu and lake hylia actors, some platforms and cuttable grass)
+
+- DLists have 1-2 less commands, depending on the texture type
+
+- DLists now allow multitexture+transparent+vertex colour combination
+
+- DLists now allow having vertex alpha value (SO will fail to render them if you enable lighting, but they are visible ingame)
+
+- Added autoupdate
+
+--------------
+---0.97 (beta)
+--------------
+
+New stuff
+
+- Added Collision tags. Its a new system to assign polytypes on your collision, basically naming the groups in the collision file with the tags found in the file XML\OOT\ModelFlags.xml (you must read this file) will make SO ignore the settings and create polytypes based on those tags. 
+
+- Added Autoadd transition actors. This feature uses #Door and #BlackPlane tags to add transition actors with variables already configured.
+
+- Added loading multiple rooms at once. Sometimes when making a very large scene with multiple rooms, like dungeons, you may find it better to keep all rooms on the same .obj. Now you can do this with #Room tags on each group. SO will split the mesh groups between rooms using this flag.
+
+- Added Cutscene tab. This feature is so complex to explain it, I hope you can figure it yourself. I will make a tutorial at some point. Its incomplete so far, but it does the job.
+
+- Added Fixed Cameras. The default camera following link is no longer the only one, you can use a wide variety of cameras! to swap between cameras ingame use the camera ID setting in polytypes. Tip: Add them with shift+click, that way they will be in the exact same position as the SO camera.
+
+
+- Added Prerendered scenes (only single background for now). Generate a JFIF image using this website: http://convertonlinefree.com/ConvertImageEN.aspx, load it and set camera settings to 0x10 (fixed camera prerendered backgrounds), and lastly set camera type to a fixed one, like 0x19.
+
+- Added title card editor (the letters that appear when entering a scene). This will directly inject into the rom, meaning that its independent, like the entrance editor.
+
+- Now it remembers the last 10 opened scenes and the last 10 injected roms
+
+- Autosave feature. Each 1 minute of not being idle, the scene will be saved into XML\autosave.xml
+
+- Added a field to configure multitexture transparency value
+
+- Undo/Redo (only for actors, transitions and spawns, this will change after the beta to allow more stuff). Press ctrl+Z for undo and ctrl+Y (temporal shortcut) for redo while being in the rendering window (you may have to click the frame first).
+
+- Save is now splitted into Save and Save As.
+
+- Added launch rom button, which just mimics double clicking the rom in the explorer.
+
+- Now tooltips appear when you hover the mouse in the polytype fields.
+
+- Added a button to reload mesh. This is beta and its sole purpose is to fix a rare bug where the entire scene mesh explodes.
+
+- Now it renders a higher amount of actors, added support to render actors with animations and actors in objects 0001-0003
+
+- Added a hidden easter egg
+
+
+- Minimal MM support (all offsets are set to GCN USA, I recommend you using this Rom, however you can change the offsets in the config file), stuff that currently works:
+	- able to inject working scenes and rooms
+	- actors, objects and music XMLs are updated if you turn MM mode on. Actor database doesn't have variables. Autoadd objects works. The rest of the dropdown list uses OOT values.
+	- cutscenes and cutscene entrance table editor are disabled
+	- entrance table editor supports it and uses MM scene names
+	- while minimaps, actor cameras and multitexture commands are injected, you're not able to edit them, this will change in a future remote version
+	- actors still use OOT rotation system, this will change after the beta
+	- due to MM having a different system, OOT multitexture options will not work
+	- clear dma table is disabled (since its oot debug rom only), this is a issue with MM and that's why I wanted to delay it as much as possible. Currently SO will only update the scene dma entry and the first room, meaning that you can inject single room scenes without hex edit. However as long as you have more than 1 room you will need to hex edit the dma table and to make things worst, you can only use the same amount of rooms as the scene you're replacing. If you know a solution about this, or you're willing to make an assembly hack for MM that skips dma table just like debug rom contact me.
+
+bug fixes
+
+- bug fixed: item dropdowns now displays the entire text
+
+- bug fixed: backface culling works again
+
+- bug fixed: trying to injecting/save/rendering with no scene function or ganon tower collapse function will no longer crash
+
+- bug fixed: auto-update CRC no longer triggers if you cancel ROM injection
+
+- bug fixed: adding actors and spawns had blackplane actor values by default. Now it defaults to a green rupee if its an actor, or a link spawner if its a spawn.
+
+- bug fixed: actor database filter is no longer case-sensitive with var names
+
+- bug fixed: pathways and objects are now limited to 15 entries. If autoadd objects adds more than 15, it will shout a warning message.
+
+- bug fixed: updating crc no longer breaks with spaces in the filename
+
+- bug fixed: auto-place actors now works with multiple rooms
+
+
+
+Known Bugs
+
+- Actor rendering is ofcourse unfinished. Some rendered actors look bad (like dark link), others are missaligned like rupees, and some others have missmatching models (like golden skulltulas having skullwaltula model). Additionally, actors use the same mouse hitbox as when you don't render them, making some of them dificult to grab
+
+- Scrolling the mouse wheel extremely fast when selecting actors/transitions/spawns makes SO fail to load the actor data propertly, replacing them with a duplicate of another one.
+
+- Sometimes, while manipulating the cutscene editor, if you attempt to open another scene xml SO will crash
+
+
+--------------
+-----0.93-----
+--------------
+
+Improvements and new stuff
+
+- Now you can use vertex color and transparency at the same time
+
+- More types of animation are now available. Do note that SO will force the mesh to follow the rules of the selected animation no matter 
+what you choose, for example if you assign an opaque texture animation to a transparent mesh, it will become opaque.
+
+- Addded a checkbox to enable continual inject (will make SO behave like HT and injecting the room after the scene). Setting the same inject offset for scene and room does the same effect.
+
+- Added a new setting in groups: metallic textures (a.k.a spherical textures). This setting is skipped when you use texture animations.
+
+- Added an option to update the crc everytime you inject a scene
+
+- Same textures used by 2 or more rooms are not written twice or more times
+
+- CI4 / CI8  textures using the same palette no longer write the same palette more times (including between rooms)
+
+- DList are now culled ofcamera ingame. This increases the room size a bit so I also added an option to disable it.
+
+- Group highlight now only appears when the selected tab is "Rooms"
+
+- Added entrance cutscene table editor. Its only purpose is to disable cutscenes from playing since cutscene editor is unfinished.
+
+- Added a 64-bit version of the executable
+
+Bugfixes
+
+- Fixed a bug were only 1 pathway was saved
+
+- Fixed a bug were entrance table used decimal numbers instead of hex, which was not the intendeed behaviour
+
+- Fixed a bug were unused materials were written in the room files 
+
+- Fixed a bug were fog distance and draw distance were not saved unless you pressed enter key
+
+- Fixed a bug were entrance table saved entries in a bad order if you sorted it, messing the whole rom table
+
+- Fixed a bug were transition actors switch and cam fields weren't duplicated with the duplicate button
+
+- Fixed a bug were transition actors switch and cam fields were filled with garbage values when using the add button
+
+- Adjusted the mouse hitbox and axis so it matches the custom door model. Doors that aren't transition actors will also be displayed with the door model now.
+
+- When the crc is updated, now it displays the succesful command line
+
+
+Debug features
+
+- Actor filling is now inside debug tab
+
+- Added an option to render actors (very experimental, you can only render very few actors, unless you update the XML, note that variables are ignored right now)
+
+- Added an option to create a pathway that surrounds the selected group
+
+
+--------------
+-----0.91-----
+--------------
+
+Improvements
+
+- Added an option to disable waterbox movement
+
+- Now you can save the options in a .xml, they will be loaded everytime you open SO
+
+- Added an option to clear the dma table of a rom. Use this if you experience crashes ingame. (this also updates the crc)
+
+Bug fixes
+
+- Auto-add objects no longer crashes when saving scene
+
+- Sticking actors to ground/ceiling now uses Z/X keys to prevent shortcut bugs
+
+- Entrance table now refreshes the scene name column more often
+
+--------------
+-----0.90-----
+--------------
+
+Improvements
+
+- Fields are now saved when losing focus. Enter key is no longer required.
+
+- Hold shift while adding or duplicating an instance to create it in front of the camera
+
+- Added room selection for waterboxes. Default value is 3F which enables them on all rooms
+
+- Now its easier to tell where the instance is facing (light-green extreme = front of the instance)
+
+- Transition actors are rendered as rectangles of the same size as ingame doors
+
+- Use mouse wheel after moving an actor to rotate it. Waterboxes will change their size instead.
+
+- Use up and down keys while moving an actor to stick to ceiling/ground
+
+
+New stuff
+
+- Actor database added for actors, transitions and spawns. Click on the blue button next to actor number to open it. You can type a word to filter actors. 
+Note that if a variable contains the word, the entire actor will be displayed. You can also use special filters like #Transitions and #Monsters.
+
+- Added entrance list. SO auto-generates it based on where you place the spawnpoints. The entrance number is the same as the order of the spawns, so the spawn 2 will be the entrance 2.
+
+- Added support to vertex colors. You must replace the export_obj.py of your blender 2.7x with the one in the blenderscripts folder.
+
+- Added an entrance table editor. This editor is independent so you can change the entrance table without injecting anything in the rom.
+
+
+Bugfixes & tweaks
+
+- Greatly improved the lighting of the imported maps by fixing a bug related to normals
+
+- Fixed a crash that involved moving an instance outside room boundaries
+
+- Fixed bug where maps made with blender couldn't have vertex groups
+
+- Fixed a bug where you could not save polytype assigned to the first group in the first room
+
+- Fixed a crash when attempting to delete the last polytype of the scene
+
+- Fixed a crash when typing on room offset when there's no rooms
+
+- [Temporal fix] animated opaque textures will be injected as transparent to avoid crashing
+
+- Reduced byte padding (less kb per scene)
+
+- When importing .obj, groups with 0 triangles are ignored
+
+--------------
+-----0.82-----
+--------------
+
+Bugfixes & tweaks
+
+- Fixed a bug where around 20% of the actors where missing in the XML files. Now there's all actors known by cloudmodding wiki.
+
+- Fixed a critical bug where the application would crash if you change the alpha value of an animated texture.
+
+- Fixed a bug where all vertex colors were set to yellow if the .obj came from sketchup or gray if the .obj came from blender.
+
+- Changed the outdoor light option (again!). Now it has been moved to scene environment and is called "Enable lighting A-E", since that's the real function it does. 
+It's also enabled by default now.
+
+Collision:
+
+- Added "Camera Angle" numeric box. Use 0x0B for ladders, 0x04 and 0x05 for crawlspaces.
+
+- Added "Ladder Top" ,"Crawl Space" , "Killing Lava" , "Jabu-Jabu" and "No Fall Damage" checkboxes
+
+Other:
+
+- If autoadd objects is ON, the application will warn you if you place 0x0002 or 0x0003 actors with the incorrect special object.
+
+- Added "Use environment 1 on all rooms" in extra tab. This option sets time values in a way that only environment setting 1 will be used.
+
+- Added "Show Controls" in help tab.
+
+--------------
+-----0.81-----
+--------------
+
+Bugfixes & tweaks
+
+- Unknown fieldbox is now merged with outdoor light checkbox
+
+- When changing outdoor light while N64 graphics option is ON, it will refresh correctly instead of being manual
+
+- Reverb field is now correctly capped at 0x0E
+
+- Fixed a crash when loading scenes with nonexisting filepaths
+
+- Now when loading a scene, if it fails to open the .obj files it will try to find them on the same folder as the xml, useful for move XMLs across computers
+
+- Fixed minor display bugs with pathways and additional lights
+
+
+--------------
+-----0.80-----
+--------------
+
+Waterboxes
+
+- Hold shift to increment/decrement size by 20 units
+
+- You can now select and move them with middle mouse
+
+
+Pathways
+
+- Added pathways and waypoints
+
+- All the actor features in 0.70 patch apply to waypoints too (+-20 units shift, stick to ground buttons, grab and move with mouse)
+
+
+Additional lights (unused)
+
+- Added additional lights (unused)
+
+- There are 2 types: point lights and directional lights
+
+- Only point lights are displayed in the editor. +-20 units shift and mouse control are enabled on point lights.
+
+- They have known glitches ingame. Also, even if they are room-based, they don't seem to unload.
+
+
+Objects
+
+- Autoadd objects scan now triggers when injecting and when saving binary too
+
+
+Room mesh
+
+- Added animated checkbox. Warning: rom will crash if you don't use 0x31 scene function
+
+
+Scene environment settings
+
+- Splited special object and outdoor lighting options
+
+- Added scene function, note that this option alters a parameter in scene table so it doesn't work when saving binary
+
+- Added skybox type
+
+- Added cloudy checkbox (only works with 0x01 skybox)
+
+- Added Nightime SFX
+
+- Added Reverb sound effect
+
+- Added camera movement (currently broken, only restricts C-Up)
+
+- Added world map location
+
+
+Room environment settings
+
+- Added fields to control the time
+
+- Added echo sound effect
+
+- Added checkbox to disable skybox and/or sun/moon
+
+- Added fields to control the wind
+
+- Added different fields to restrict link jumps and songs
+
+- Added checkbox to display invisible actors (those that need lens of truth)
+
+- Added field to control various effects, such as link idle anims, too hot room and ride epona on start.
+
+
+Options tab
+
+- Added an option to hide item axis
+
+
+Extra tab
+
+- Set default environment list values: This sets environment values to default (same as when you create a new scene)
+
+- Set haunted wasteland wind values: Sets wind values to those in haunted wasteland, recomended if you don't want to mess with the weird wind values
+
+- Copy first room env. settings to all rooms: Useful to set the same settings on all rooms by only changing the first one. Additional lights are skipped because of their weird nature.
+
+
+Misc.
+
+- Moved some options and added new tabs
+
+- Changed application name and icon
+
+- Added credits and special thanks to the readme (the rest of the readme is unchanged)
+
+- Added changelog.txt
+
+- Most data is inside XML for easy customization
+
+
+Bugfixes
+
+- Fixed a bug where the application crashed if you input space+enter in some fields
+
+- Fixed a bug where some fields could overflow
+
+- Fixed a bug where you could only type 4 numbers in room offsets
+
+- Fixed a bug where spawns and transitions didn't refreshed their values when moving them with middle mouse
+
+- Fixed a bug where spawns and transitions were harder to grab than actors
+
+- Fixed a bug where the application crashed if targed rom was in use. Now an error message is displayed saying that target rom is in use.
+
+- I'm missing some more
+
+--------------
+-----0.70-----
+--------------
+
+Actors, transition actors, spawn points
+
+- The name of the actor is displayed (example, 0025 = lizalfos)
+
+- Now they are displayed on a list
+
+- Duplicate button
+
+- Options to stick an actor to a wall, ground or ceiling
+
+- You can select them with right click
+
+- You can move them with middle click. Hold shift to move them front and back.
+
+- Hold shift and click the numeric positions to increase/decrease them by 20 units instead of 1
+
+- A "Degrees" option to multiply rotations by 182.044444444 after pressing enter.
+
+- Dropdown to select variables for transition actors (doors and black plane)
+
+
+Objects
+
+- Selecting an object displays it's internal name, size in hex and the actors that use this object
+
+- On save, the application will automatically add missing objects (checks all rooms). You can disable this with "Autoadd objects" option.
+
+- A maxium object space appears. If the sum of your object sizes is bigger than this limit, it will turn red.
+
+
+Waterboxes
+
+- Now they have different coloration when unselected.
+
+- Hold shift and click the numeric positions to increase/decrease them by 20 units instead of 1
+
+
+BGM
+
+- BGM can be selected with a dropdown list. The name and id of the BGMs can be changed by editing SongName.xml (for custom BGM)
+
+
+Bugfixes
+
+- Fixed the option "Emulate N64 Graphics".
+
+- It's now GLideN64 compatible (it should work in N64 too, I guess)
+
+- When you add an actor, it now appears in the center of the current room
+
+
+Extras (experimental)
+
+I was using these functions to quickly test the changes I was making, but I decided to keep them just for fun. Actors are never placed oob or mid-air, however when there are multiple rooms, they have a low chance to be placed on a near room collision plane.
+
+- Fill room with enemies clear-flag: randomly places 9 different enemies and a clear flag chest. Use ROM pointer hacks to avoid maximum object space crash or delete some enemies.
+
+- Fill room with silver rupees switch-flag: randomly places silver rupee puzzle and a switch flag chest.
+
+
+Known bugs
+
+- Very rarely the textures disappear when the window loses focus with Emulate N64 Graphics On, to fix this just reenable the option.
+
+- If you open the top menu and you cancel it by clicking on the render window, the camera does a weird rotation. Click somewhere else to avoid this.

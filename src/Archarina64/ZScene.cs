@@ -1,0 +1,6190 @@
+﻿using OpenTK;
+using OpenTK.Graphics.OpenGL;
+using SharpOcarina.Properties;
+using SharpOcarina.SayakaGL;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Design;
+using System.Drawing.Imaging;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Security.Policy;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
+using System.Xml;
+using System.Xml.Serialization;
+using Tommy;
+using static SharpOcarina.ZScene.ZRoom;
+
+namespace SharpOcarina
+{
+    public class ZScene
+    {
+        [XmlIgnore]
+        public List<string> PreviewDiagnostics = new List<string>();
+
+        #region Classes, Variables, etc.
+
+        public class ZRoom
+        {
+            public string ModelFilename = string.Empty;
+            public int StartTime = 0xFFFF;
+            public byte TimeSpeed = 0x0A;
+            public bool DisableSkybox = false;
+            public bool DisableSunMoon = false;
+            public byte WindWest = 0x0F;
+            public byte WindVertical = 0x28;
+            public byte WindSouth = 0x6D;
+            public byte WindStrength = 0xBE;
+            public byte Restriction = 0x00;
+            public byte IdleAnim = 0x00;
+            public bool ShowInvisibleActors = false;
+            public bool DisableWarpSongs = false;
+            public byte Echo = 0x00;
+            public bool AffectedByPointLight = false;
+            public bool Type2 = false;
+            public List<ZAdditionalLight> AdditionalLights = new List<ZAdditionalLight>();
+       
+            [XmlIgnore]
+            public List<LODgroup> LODgroups = new List<LODgroup>();
+            [XmlIgnore]
+            public List<NDisplayList> LODdlists = new List<NDisplayList>();
+
+            [XmlIgnore]
+            private string _ModelShortFilename = string.Empty;
+
+            [XmlIgnore] public uint newoffset = 0;
+
+            [XmlIgnore] public uint oldoffset = 0;
+
+            public int InjectOffset;
+            [XmlIgnore]
+            public int FullDataLength;
+
+            public List<ZUShort> ZObjects = new List<ZUShort>();
+            public List<ZActor> ZActors = new List<ZActor>();
+            public List<RoomAuthoringPrimitive> AuthoringPrimitives = new List<RoomAuthoringPrimitive>();
+            [XmlIgnore]
+            public List<ObjFile.Group> TrueGroups = null;
+            [XmlIgnore]
+            public ObjFile ObjModel = null;
+            [XmlIgnore]
+            public List<NDisplayList> DLists = null;
+            [XmlIgnore]
+            public List<Type2Group> Type2Groups = new List<Type2Group>();
+
+            [XmlIgnore]
+            public bool AuthoringPrimitivesApplied = false;
+
+            public class RoomAuthoringPrimitive
+            {
+                public int Type;
+                public string Name = "Primitive";
+                public string MaterialName = "Default";
+                public List<string> FaceMaterials = new List<string>();
+                public string TexturePath = "";
+                public double MinX = -50, MinY = 0, MinZ = -50;
+                public double MaxX = 50, MaxY = 100, MaxZ = 50;
+                public double ScaleX = 1, ScaleY = 1, ScaleZ = 1;
+                public int CollisionPolyType = 0;
+                public bool AddToCollision = true;
+
+                public RoomAuthoringPrimitive() { }
+
+                public RoomAuthoringPrimitive(RoomPrimitiveSpec spec)
+                {
+                    Type = (int)spec.Type;
+                    Name = spec.Name;
+                    MaterialName = spec.MaterialName;
+                    FaceMaterials = spec.FaceMaterials == null ? new List<string>() : new List<string>(spec.FaceMaterials);
+                    TexturePath = spec.TexturePath ?? "";
+                    MinX = spec.Min.X; MinY = spec.Min.Y; MinZ = spec.Min.Z;
+                    MaxX = spec.Max.X; MaxY = spec.Max.Y; MaxZ = spec.Max.Z;
+                    ScaleX = spec.Scale.X; ScaleY = spec.Scale.Y; ScaleZ = spec.Scale.Z;
+                    CollisionPolyType = spec.CollisionPolyType;
+                    AddToCollision = spec.AddToCollision;
+                }
+
+                public RoomPrimitiveSpec ToSpec()
+                {
+                    return new RoomPrimitiveSpec
+                    {
+                        Type = (RoomPrimitiveType)Type,
+                        Name = Name,
+                        MaterialName = MaterialName,
+                        FaceMaterials = FaceMaterials == null ? new List<string>() : new List<string>(FaceMaterials),
+                        TexturePath = string.IsNullOrEmpty(TexturePath) ? null : TexturePath,
+                        Min = new Vector3d(MinX, MinY, MinZ),
+                        Max = new Vector3d(MaxX, MaxY, MaxZ),
+                        Scale = new Vector3d(ScaleX, ScaleY, ScaleZ),
+                        CollisionPolyType = CollisionPolyType,
+                        AddToCollision = AddToCollision
+                    };
+                }
+            }
+
+
+
+
+            public string ModelShortFilename
+            {
+                get { return _ModelShortFilename; }
+                set { _ModelShortFilename = value; }
+            }
+
+            public class Type2Group
+            {
+                public int TagIndex;
+                public Vector3d MinCoordinate = new Vector3d(999999,999999,999999);
+                public Vector3d MaxCoordinate = new Vector3d(-999999, -999999, -999999);
+                public List<uint> OpaOffsets = new List<uint>();
+                public List<uint> XluOffsets = new List<uint>();
+                public List<NDisplayList> DisplayLists = new List<NDisplayList>();
+
+                public Type2Group(int tagindex)
+                {
+                    TagIndex = tagindex;
+                }
+            }
+
+            public class ZGroupSettings
+            {
+                public uint[] TintAlpha = new uint[1];
+                public int[] TileS = new int[1];
+                public int[] TileT = new int[1];
+                public int[] PolyType = new int[1];
+                public bool[] BackfaceCulling = new bool[1];
+                public bool[] Animated = new bool[1];
+                public bool[] Metallic = new bool[1];
+                public bool[] EnvColor = new bool[1];
+                public bool[] Decal = new bool[1];
+                public bool[] IgnoreFog = new bool[1];
+                public bool[] SmoothRGBAEdges = new bool[1];
+                public bool[] Pixelated = new bool[1];
+                public bool[] Billboard = new bool[1];
+                public bool[] TwoAxisBillboard = new bool[1];
+                public int[] MultiTexMaterial = new int[1];
+                public string[] MultiTexMaterialName = { "" };
+                public int[] ShiftS = new int[1];
+                public int[] ShiftT = new int[1];
+                public int[] BaseShiftS = new int[1];
+                public int[] BaseShiftT = new int[1];
+                public uint[] MultiTexAlpha = new uint[2];
+                public bool[] ReverseLight = new bool[1];
+                public int[] AnimationBank = new int[1];
+                public int[] LodGroup = new int[1];
+                public int[] LodDistance = new int[1];
+                public bool[] LOD = new bool[1];
+                public bool[] AlphaMask = new bool[1];
+                public bool[] RenderLast = new bool[1];
+                public bool[] VertexNormals = new bool[1];
+                public bool[] Custom = new bool[1];
+                // Runtime display-list overrides are not part of the XML scene format.
+                [XmlIgnore]
+                public ulong[,] CustomDL = new ulong[1,4];
+                public bool[] ScaledNormals = new bool[1];
+                public bool[] TexPointerPlus1 = new bool[1];
+                public bool[] Vibrant = new bool[1];
+                public Vector3s[] PivotPoint = new Vector3s[1];
+
+                [XmlIgnore]
+                public string[] groupname = new string[1];
+
+                public ZGroupSettings Clone()
+                {
+                    ZGroupSettings clone = (ZGroupSettings)this.MemberwiseClone();
+                    foreach (FieldInfo field in typeof(ZGroupSettings).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+                    {
+                        Array values = field.GetValue(this) as Array;
+                        if (values != null) field.SetValue(clone, values.Clone());
+                    }
+                    return clone;
+                }
+
+                public void CopyVals(int indexA, ZGroupSettings B, int index)
+                {
+                TintAlpha[indexA] = B.TintAlpha[index];
+                TileS[indexA] = B.TileS[index];
+                TileT[indexA] = B.TileT[index];
+                PolyType[indexA] = B.PolyType[index];
+                BackfaceCulling[indexA] = B.BackfaceCulling[index];
+                Animated[indexA] = B.Animated[index];
+                Metallic[indexA] = B.Metallic[index];
+                EnvColor[indexA] = B.EnvColor[index];
+                Decal[indexA] = B.Decal[index];
+                IgnoreFog[indexA] = B.IgnoreFog[index];
+                SmoothRGBAEdges[indexA] = B.SmoothRGBAEdges[index];
+                MultiTexMaterial[indexA] = B.MultiTexMaterial[index];
+                MultiTexMaterialName[indexA] = B.MultiTexMaterialName[index];
+                ShiftS[indexA] = B.ShiftS[index];
+                ShiftT[indexA] = B.ShiftT[index];
+                BaseShiftS[indexA] = B.BaseShiftS[index];
+                BaseShiftT[indexA] = B.BaseShiftT[index];
+                MultiTexAlpha[indexA] = B.MultiTexAlpha[index];
+                ReverseLight[indexA] = B.ReverseLight[index];
+                Pixelated[indexA] = B.Pixelated[index];
+                Billboard[indexA] = B.Billboard[index];
+                TwoAxisBillboard[indexA] = B.TwoAxisBillboard[index];
+                AnimationBank[indexA] = B.AnimationBank[index];
+                LodGroup[indexA] = B.LodGroup[index];
+                LodDistance[indexA] = B.LodDistance[index];
+                LOD[indexA] = B.LOD[index];
+                AlphaMask[indexA] = B.AlphaMask[index];
+                RenderLast[indexA] = B.RenderLast[index];
+                VertexNormals[indexA] = B.VertexNormals[index];
+                Custom[indexA] = B.Custom[index];
+                CustomDL[indexA,0] = B.CustomDL[index,0];
+                CustomDL[indexA, 1] = B.CustomDL[index, 1];
+                CustomDL[indexA, 2] = B.CustomDL[index, 2];
+                CustomDL[indexA, 3] = B.CustomDL[index, 3];
+                ScaledNormals[indexA] = B.ScaledNormals[index];
+                TexPointerPlus1[indexA] = B.TexPointerPlus1[index];
+                PivotPoint[indexA] = B.PivotPoint[index];
+                }
+            }
+
+            public ZGroupSettings GroupSettings = new ZGroupSettings();
+
+            [XmlIgnore]
+            public List<byte> RoomData;
+
+            public List<byte> OriginalRoomData;
+
+            [XmlIgnore]
+            public List<SayakaGL.UcodeSimulator.DisplayListStruct> N64DLists;
+            [XmlIgnore]
+            public int MeshHeaderOffset = 0;
+
+            // Imported rooms keep their original native display lists so the
+            // simulator can preserve the source scene exactly. Once the mesh
+            // editor commits a change, preview must switch to the rebuilt room
+            // bytes instead of silently rendering the stale source room.
+            [XmlIgnore]
+            public bool MeshEdited;
+
+            public int OriginalMeshHeaderOffset = 0;
+
+            public ZRoom() { }
+
+            public ZRoom Clone()
+            {
+                ZRoom clone = (ZRoom)this.MemberwiseClone();
+                clone.ZActors = ZActors.ConvertAll(x => (x.Clone()));
+                clone.ZObjects = ZObjects.ConvertAll(x => (x.Clone()));
+                clone.AdditionalLights = AdditionalLights.ConvertAll(x => (x.Clone()));
+                clone.AuthoringPrimitives = AuthoringPrimitives == null
+                    ? new List<RoomAuthoringPrimitive>()
+                    : AuthoringPrimitives.Select(x => x == null ? null : new RoomAuthoringPrimitive
+                    {
+                        Type = x.Type, Name = x.Name, MaterialName = x.MaterialName,
+                        FaceMaterials = x.FaceMaterials == null ? new List<string>() : new List<string>(x.FaceMaterials),
+                        TexturePath = x.TexturePath, MinX = x.MinX, MinY = x.MinY, MinZ = x.MinZ,
+                        MaxX = x.MaxX, MaxY = x.MaxY, MaxZ = x.MaxZ,
+                        ScaleX = x.ScaleX, ScaleY = x.ScaleY, ScaleZ = x.ScaleZ,
+                        CollisionPolyType = x.CollisionPolyType, AddToCollision = x.AddToCollision
+                    }).ToList();
+                clone.GroupSettings = GroupSettings == null ? new ZGroupSettings() : GroupSettings.Clone();
+                clone.RoomData = RoomData == null ? null : new List<byte>(RoomData);
+                clone.OriginalRoomData = OriginalRoomData == null ? null : new List<byte>(OriginalRoomData);
+                if (ObjModel != null)
+                {
+                    IList<ObjFile.Group> sourceGroups = TrueGroups ?? ObjModel.Groups;
+                    clone.ObjModel = TileMesh.Copy(ObjModel, sourceGroups).ToModel();
+                    clone.ObjModel.BasePath = ObjModel.BasePath;
+                    clone.TrueGroups = clone.ObjModel.Groups;
+                }
+                else
+                {
+                    clone.ObjModel = null;
+                    clone.TrueGroups = null;
+                }
+                clone.DLists = null;
+                clone.LODgroups = new List<LODgroup>();
+                clone.LODdlists = new List<NDisplayList>();
+                clone.Type2Groups = Type2Groups == null ? new List<Type2Group>() : new List<Type2Group>(Type2Groups);
+
+                return clone;
+            }
+
+
+        }
+
+        public class ZUShort
+        {
+            [XmlIgnore]
+            private ushort _Value;
+
+            [XmlIgnore]
+            public string ValueHex
+            {
+                get { return _Value.ToString("X4"); }
+            }
+
+            public ushort Value
+            {
+                get { return _Value; }
+                set { _Value = value; }
+            }
+
+            public ZUShort() { }
+
+            public ZUShort(ushort value)
+            {
+                _Value = value;
+            }
+
+            public ZUShort Clone()
+            {
+                return (ZUShort)this.MemberwiseClone();
+            }
+        }
+
+        public string Name;
+        public float Scale;
+        public byte Music, NightSFX, Skybox, Weather;
+        public ushort SpecialObject = 0x0003;
+        public byte ElfMessage = 0x00;
+        public int InjectOffset = 0x02D00000;
+        public int SceneNumber = 108;
+        public byte Reverb = 0x00;
+        public byte CameraMovement = 0x00;
+        public byte WorldMap = 0x00;
+        public byte SceneSettings = 0x00;
+        public bool OutdoorLight = true;
+        public short FixedCameraXPos = 0;
+        public short FixedCameraYPos = 0;
+        public short FixedCameraZPos = 0;
+        public short FixedCameraXRot = 0;
+        public short FixedCameraYRot = 0;
+        public short FixedCameraZRot = 0;
+        public byte TimeCtrl = 0x00;
+        public byte SkyboxType = 0x00;
+        public bool Cloudy = false;
+        public bool ContinualInject = true;
+        public bool NewRoomMode = false;
+        public bool Prerendered = false;
+        public bool PregeneratedMesh = false;
+        public string JFIFpath = "";
+        public int cloneid = 0;
+        public int CutsceneEntrance = 0x0000;
+        public int CutsceneEntranceNum = 0x00;
+        public int CutsceneFlag = 0x00;
+        public int CutsceneTableRow = -1;
+        public int version = 0;
+        public List<ZSegmentFunction> SegmentFunctions = new List<ZSegmentFunction>();
+        public List<string> prerenderimages = new List<string>();
+        public bool inherittextureanims = true;
+        [XmlIgnore]
+        public uint MainHeaderTextureAnimOffset = 0;
+        public uint RestrictionFlags = 0;
+        public byte[] TitleCard = new byte[]{};
+        public string MMTitleCard = "";
+        public bool AutoCollision = false;
+        [XmlIgnore]
+        public Dictionary<int, string> SwitchFlagNames = new Dictionary<int, string>();
+
+        [XmlIgnore]
+        private uint cachecutsceneoffset = 0;
+
+        [XmlIgnore]
+        private Dictionary<int, List<ushort>> polytypetris;
+
+        public List<ZRoom> Rooms
+        {
+            get { return _Rooms; }
+            set { _Rooms = value; }
+        }
+
+        /* Scene data */
+        public string CollisionFilename = string.Empty;
+        public string SandboxGeometryFile = string.Empty;
+        [XmlIgnore]
+        public List<TileSocket> TileSockets = new List<TileSocket>();
+        [XmlIgnore]
+        public List<RoomPackage> SandboxGameplayPackages = new List<RoomPackage>();
+        [XmlIgnore]
+        public ObjFile ColModel = null;
+        public List<ZUShort> ZObjects = new List<ZUShort>();
+        public List<ZActor> Transitions = new List<ZActor>();
+        public List<ZActor> SpawnPoints = new List<ZActor>();
+        public List<ZEnvironment> Environments = new List<ZEnvironment>();
+        public List<ZWaterbox> Waterboxes = new List<ZWaterbox>();
+        public List<ZColPolyType> PolyTypes = new List<ZColPolyType>();
+        public List<ZUShort> ExitList = new List<ZUShort>();
+        public List<ZExit> ExitListV2 = new List<ZExit>();
+        public List<ZPathway> Pathways = new List<ZPathway>();
+        public List<ZCutscene> Cutscene = new List<ZCutscene>();
+        public List<ZCamera> Cameras = new List<ZCamera>();
+        public List<ZSceneHeader> SceneHeaders = new List<ZSceneHeader>();
+        public List<ObjFile.Material> AdditionalTextures = new List<ObjFile.Material>();
+        public List<ZTextureAnim> TextureAnims = new List<ZTextureAnim>();
+        public List<ZActorCutscene> ActorCutscenes = new List<ZActorCutscene>();
+        public Vector3s MinCollisionBounds = new Vector3s(0, 0, 0);
+        public Vector3s MaxCollisionBounds = new Vector3s(0, 0, 0);
+        public byte[] CollisionSubdivisions = new byte[3] { 16, 16, 16 };
+        public bool AutomaticCollisionBounds = true;
+        public bool AutomaticSubdivisions = true;
+
+
+        [XmlIgnore]
+        public Dictionary<string, int> textureoffsets = new Dictionary<string, int>();
+        [XmlIgnore]
+        public Dictionary<byte[], int> paletteoffsets = new Dictionary<byte[], int>();
+
+        [XmlIgnore]
+        private List<byte> SceneData;
+
+        [XmlIgnore]
+        public int GeneratedSceneDataLength
+        {
+            get { return SceneData == null ? 0 : SceneData.Count; }
+        }
+
+        [XmlIgnore]
+        public int OriginalScenePackageLength
+        {
+            get
+            {
+                int length = OriginalSceneData == null ? 0 : OriginalSceneData.Count;
+                foreach (ZRoom room in _Rooms)
+                    if (room.OriginalRoomData != null) length += room.OriginalRoomData.Count;
+                return length;
+            }
+        }
+
+        public List<byte> OriginalSceneData;
+
+        [XmlIgnore]
+        private int CmdCollisionOffset = -1, CmdMapListOffset = -1, CmdTransitionsOffset = -1, CmdExitListOffset = -1, CmdSpawnPointOffset = -1, CmdEnvironmentsOffset = -1, CmdEntranceListOffset = -1, CmdPathwayOffset = -1, CmdCutsceneOffset = -1, MMCmdCameraOffset = -1, MMCmdMinimapOffset = -1, MMCmdTextureAnimOffset = -1, CmdAlternateSceneHeader = -1, CmdRoomAlternateSceneHeader = -1;
+
+        /* Room data */
+        private List<ZRoom> _Rooms = new List<ZRoom>();
+
+        private string _BasePath = string.Empty;
+
+        [XmlIgnore]
+        const uint Dummy = 0xDEADBEEF;
+
+        [XmlIgnore]
+        int CollisionOffset = 0, EntranceOffset = 0, RoomOffsets = 0;
+
+        [XmlIgnore]
+        int RoomIndex;
+
+        [XmlIgnore]
+        private int CmdMeshHeaderOffset = -1, CmdObjectOffset = -1, CmdActorOffset = -1, CmdExtraLightOffset = -1, CmdAlternateRoomHeader = -1, PrerenderedFixOffset = -1;
+        [XmlIgnore]
+        private int MeshHeaderOffset, ObjectOffset, ActorOffset, ExtraLightOffset, Type2MeshHeaderOffset, Type2Entries;
+        [XmlIgnore]
+        private List<NTexture> Textures;
+
+        [XmlIgnore]
+        public string BasePath
+        {
+            get { return _BasePath; }
+            set { _BasePath = value; }
+        }
+
+        #endregion
+
+        #region Constructors, Basic Functions
+
+        public ZScene() { }
+
+
+        public void Prepare()
+        {
+            foreach (ZRoom Room in _Rooms)
+            {
+                Room.ObjModel.BasePath = BasePath;
+                Room.ObjModel.Prepare(Room.TrueGroups);
+            }
+        }
+
+        #endregion
+
+        #region Helper Functions
+
+        private void AddPadding(ref List<byte> Data, int Length)
+        {
+            int ToAdd = Length - (Data.Count % Length);
+            if (ToAdd != Length) for (int i = 0; i < ToAdd; i++) Data.Add(0);
+        }
+
+        public void AddRoom(string Filename, string extrastr = "", int subs = 0)
+        {
+            ZRoom NewRoom = new ZRoom();
+
+            NewRoom.ModelFilename = Filename;
+            NewRoom.ModelShortFilename = Path.GetFileNameWithoutExtension(Filename) + extrastr;
+            NewRoom.ObjModel = new ObjFile(Filename);
+            NewRoom.ZObjects = new List<ZUShort>();
+            NewRoom.ZActors = new List<ZActor>();
+            NewRoom.InjectOffset = 0x02D00000;
+            NewRoom.TrueGroups = new List<ObjFile.Group>();
+
+
+
+            int groupcount = NewRoom.ObjModel.Groups.Count;
+
+            if (NewRoomMode)
+            {
+                groupcount = 0;
+                foreach (ObjFile.Group group in NewRoom.ObjModel.Groups)
+                {
+                    group.Name = group.Name.Replace("TAG_", "#");
+
+                    string s = group.Name.Substring(group.Name.ToLower().IndexOf("#room") + 5);
+                    s = s.SubstringTill(0, '#').SubstringTill(0, '.').SubstringTill(0, '_');
+
+
+                    int tmp;
+
+                    if (!Int32.TryParse(s, out tmp))
+                    {
+                        continue;
+                    }
+                    //DebugConsole.WriteLine(tmp);
+                    if (tmp == _Rooms.Count - subs)
+                    {
+                        groupcount++;
+                        NewRoom.TrueGroups.Add(group);
+                    }
+
+                    /*
+                    if (group.Name.ToLower().Contains("#room" + (_Rooms.Count - subs)))
+                    {
+                        if ((_Rooms.Count - subs) < 10)
+                        {
+                            Regex regex = new Regex(@"#room" + (_Rooms.Count - subs) + "([^0-9]|$)");
+                            Match match = regex.Match(group.Name.ToLower());
+                            if (!match.Success) continue;
+                        }
+                        groupcount++;
+
+
+
+                        NewRoom.TrueGroups.Add(group);
+                    }*/
+                }
+
+            }
+            else { NewRoom.TrueGroups = NewRoom.ObjModel.Groups; }
+
+            ulong polytype = 0;
+            NewRoom.GroupSettings.PolyType = new int[groupcount];
+
+
+
+            NewRoom.GroupSettings.TintAlpha = new uint[groupcount];
+            NewRoom.GroupSettings.TileS = new int[groupcount];
+            NewRoom.GroupSettings.TileT = new int[groupcount];
+            NewRoom.GroupSettings.BackfaceCulling = new bool[groupcount];
+            NewRoom.GroupSettings.Animated = new bool[groupcount];
+            NewRoom.GroupSettings.Metallic = new bool[groupcount];
+            NewRoom.GroupSettings.EnvColor = new bool[groupcount];
+            NewRoom.GroupSettings.Decal = new bool[groupcount];
+            NewRoom.GroupSettings.IgnoreFog = new bool[groupcount];
+            NewRoom.GroupSettings.SmoothRGBAEdges = new bool[groupcount];
+            NewRoom.GroupSettings.Pixelated = new bool[groupcount];
+            NewRoom.GroupSettings.Billboard = new bool[groupcount];
+            NewRoom.GroupSettings.TwoAxisBillboard = new bool[groupcount];
+            NewRoom.GroupSettings.ReverseLight = new bool[groupcount];
+            NewRoom.GroupSettings.MultiTexMaterial = new int[groupcount];
+            NewRoom.GroupSettings.MultiTexMaterialName = new string[groupcount];
+            NewRoom.GroupSettings.ShiftS = new int[groupcount];
+            NewRoom.GroupSettings.ShiftT = new int[groupcount];
+            NewRoom.GroupSettings.BaseShiftS = new int[groupcount];
+            NewRoom.GroupSettings.BaseShiftT = new int[groupcount];
+            NewRoom.GroupSettings.MultiTexAlpha = new uint[groupcount];
+            NewRoom.GroupSettings.AnimationBank = new int[groupcount];
+            NewRoom.GroupSettings.LodGroup = new int[groupcount];
+            NewRoom.GroupSettings.LodDistance = new int[groupcount];
+            NewRoom.GroupSettings.LOD = new bool[groupcount];
+            NewRoom.GroupSettings.AlphaMask = new bool[groupcount];
+            NewRoom.GroupSettings.RenderLast = new bool[groupcount];
+            NewRoom.GroupSettings.VertexNormals = new bool[groupcount];
+            NewRoom.GroupSettings.Custom = new bool[groupcount];
+            NewRoom.GroupSettings.CustomDL = new ulong[groupcount,4];
+            NewRoom.GroupSettings.ScaledNormals = new bool[groupcount];
+            NewRoom.GroupSettings.TexPointerPlus1 = new bool[groupcount];
+            NewRoom.GroupSettings.PivotPoint = new Vector3s[groupcount];
+            for (int i = 0; i < groupcount; i++)
+            {
+                NewRoom.GroupSettings.TintAlpha[i] = 0xFFFFFFFF;
+                NewRoom.GroupSettings.MultiTexAlpha[i] = 0xFFFFFFFF;
+                NewRoom.GroupSettings.TileS[i] = GBI.G_TX_WRAP;
+                NewRoom.GroupSettings.TileT[i] = GBI.G_TX_WRAP;
+                //  NewRoom.GroupSettings.PolyType[i] = 0x0000000000000000;
+                NewRoom.GroupSettings.BackfaceCulling[i] = true;
+                NewRoom.GroupSettings.Animated[i] = false;
+                NewRoom.GroupSettings.Metallic[i] = false;
+                NewRoom.GroupSettings.EnvColor[i] = false;
+                NewRoom.GroupSettings.Decal[i] = false;
+                NewRoom.GroupSettings.IgnoreFog[i] = false;
+                NewRoom.GroupSettings.SmoothRGBAEdges[i] = false;
+                NewRoom.GroupSettings.Pixelated[i] = false;
+                NewRoom.GroupSettings.Billboard[i] = false;
+                NewRoom.GroupSettings.TwoAxisBillboard[i] = false;
+                NewRoom.GroupSettings.ReverseLight[i] = false;
+                NewRoom.GroupSettings.MultiTexMaterial[i] = -1;
+                NewRoom.GroupSettings.MultiTexMaterialName[i] = "";
+                NewRoom.GroupSettings.ShiftS[i] = GBI.G_TX_NOLOD;
+                NewRoom.GroupSettings.ShiftT[i] = GBI.G_TX_NOLOD;
+                NewRoom.GroupSettings.BaseShiftS[i] = GBI.G_TX_NOLOD;
+                NewRoom.GroupSettings.BaseShiftT[i] = GBI.G_TX_NOLOD;
+                NewRoom.GroupSettings.AnimationBank[i] = 8;
+                NewRoom.GroupSettings.LodGroup[i] = 0;
+                NewRoom.GroupSettings.LodDistance[i] = 0;
+                NewRoom.GroupSettings.LOD[i] = false;
+                NewRoom.GroupSettings.AlphaMask[i] = false;
+                NewRoom.GroupSettings.RenderLast[i] = false;
+                NewRoom.GroupSettings.VertexNormals[i] = false;
+                NewRoom.GroupSettings.ScaledNormals[i] = false;
+                NewRoom.GroupSettings.TexPointerPlus1[i] = false;
+                NewRoom.GroupSettings.Custom[i] = false;
+                NewRoom.GroupSettings.CustomDL[i, 0] = 0;
+                NewRoom.GroupSettings.CustomDL[i, 1] = 0;
+                NewRoom.GroupSettings.CustomDL[i, 2] = 0;
+                NewRoom.GroupSettings.CustomDL[i, 3] = 0;
+                NewRoom.GroupSettings.PivotPoint[i] = new Vector3s(32767, 32767, 32767);
+                //dungen
+
+                ObjFile.Group group = NewRoom.TrueGroups[i];
+
+                ApplyMeshTags(group, NewRoom, i);
+
+                
+            }
+
+
+
+            _Rooms.Add(NewRoom);
+        }
+
+        public void ApplyMeshTags(ObjFile.Group group, ZRoom NewRoom, int i)
+        {
+
+            group.Name = group.Name.Replace("TAG_", "#");
+
+            if (group.Name.ToLower().Contains("#alpha"))
+            {
+                int alphanum = 0;
+                if (!Int32.TryParse(group.Name.Substring2(group.Name.ToLower().IndexOf("#alpha") + 6, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out alphanum))
+                {
+                    MessageBox.Show("Bad usage of alpha tag. It should be #AlphaXX (XX = amount in hex) ", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                //int alphanum = Convert.ToInt32(group.Name.ToLower().Substring(group.Name.IndexOf("#alpha") + 6, 2), 16);
+                NewRoom.GroupSettings.TintAlpha[i] = (uint)(0x00FFFFFF | (alphanum << 24));
+                group.TintAlpha = (uint)(0x00FFFFFF | (alphanum << 24));
+            }
+            if (group.Name.ToLower().Contains("#animated"))
+            {
+                int animatednum = 0;
+                if (!Int32.TryParse(group.Name.Substring2(group.Name.ToLower().IndexOf("#animated") + 9, 1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out animatednum))
+                {
+                    MessageBox.Show("Bad usage of animated tag. It should be #AnimatedX (X = bank in hex) ", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                animatednum = MainForm.Clamp(animatednum, 8, 0xF);
+                //int animatednum = Convert.ToInt32(, 16);
+                NewRoom.GroupSettings.AnimationBank[i] = animatednum;
+                group.AnimationBank = animatednum;
+                NewRoom.GroupSettings.Animated[i] = true;
+                group.Animated = true;
+
+            }
+            if (group.Name.ToLower().Contains("#multialpha"))
+            {
+                int alphanum = 0;
+                if (!Int32.TryParse(group.Name.Substring2(group.Name.ToLower().IndexOf("#multialpha") + 11, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out alphanum))
+                {
+                    MessageBox.Show("Bad usage of multialpha tag. It should be #MultiAlphaXX (XX = amount in hex) ", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+
+                NewRoom.GroupSettings.MultiTexAlpha[i] = (uint)(0x00FFFFFF | (alphanum << 24));
+                group.MultiTexAlpha = (uint)(0x00FFFFFF | (alphanum << 24));
+            }
+            if (group.Name.ToLower().Contains("#shifts"))
+            {
+                int shift = 0;
+
+                if (!Int32.TryParse(group.Name.Substring2(group.Name.ToLower().IndexOf("#shifts") + 7, 2), out shift))
+                {
+                    MessageBox.Show("Bad usage of shiftS tag. It should be #ShiftSXX (XX = amount in decimal) ", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                shift = MainForm.Clamp(shift, -9, 9);
+                NewRoom.GroupSettings.BaseShiftS[i] = shift;
+                group.BaseShiftS = shift;
+            }
+            if (group.Name.ToLower().Contains("#shiftt"))
+            {
+                int shift = 0;
+                if (!Int32.TryParse(group.Name.Substring2(group.Name.ToLower().IndexOf("#shiftt") + 7, 2), out shift))
+                {
+                    MessageBox.Show("Bad usage of shiftT tag. It should be #ShiftTXX (XX = amount in decimal) ", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                shift = MainForm.Clamp(shift, -9, 9);
+                NewRoom.GroupSettings.BaseShiftT[i] = shift;
+                group.BaseShiftT = shift;
+            }
+            if (group.Name.ToLower().Contains("#multishifts"))
+            {
+                int shift = 0;
+                if (!Int32.TryParse(group.Name.Substring2(group.Name.ToLower().IndexOf("#multishifts") + 12, 2), out shift))
+                {
+                    MessageBox.Show("Bad usage of multishiftS tag. It should be #MultiShiftSXX (XX = amount in decimal) ", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                shift = MainForm.Clamp(shift, -9, 9);
+                NewRoom.GroupSettings.ShiftS[i] = shift;
+                group.ShiftS = shift;
+            }
+            if (group.Name.ToLower().Contains("#multishiftt"))
+            {
+                int shift = 0;
+                if (!Int32.TryParse(group.Name.Substring2(group.Name.ToLower().IndexOf("#multishiftt") + 12, 2), out shift))
+                {
+                    MessageBox.Show("Bad usage of multishiftT tag. It should be #MultiShiftTXX (XX = amount in decimal) ", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                shift = MainForm.Clamp(shift, -9, 9);
+                NewRoom.GroupSettings.ShiftT[i] = shift;
+                group.ShiftT = shift;
+            }
+            if (group.Name.ToLower().Contains("#backfaceculling"))
+            {
+                NewRoom.GroupSettings.BackfaceCulling[i] = false;
+                group.BackfaceCulling = false;
+            }
+            if (group.Name.ToLower().Contains("#metallic"))
+            {
+                NewRoom.GroupSettings.Metallic[i] = true;
+                group.Metallic = true;
+            }
+            if (group.Name.ToLower().Contains("#decal"))
+            {
+                NewRoom.GroupSettings.Decal[i] = true;
+                group.Decal = true;
+            }
+            if (group.Name.ToLower().Contains("#billboard"))
+            {
+                NewRoom.GroupSettings.Billboard[i] = true;
+                group.Billboard = true;
+            }
+            if (group.Name.ToLower().Contains("#2dbillboard"))
+            {
+                NewRoom.GroupSettings.TwoAxisBillboard[i] = true;
+                group.TwoAxisBillboard = true;
+            }
+            if (group.Name.ToLower().Contains("#mirrorx"))
+            {
+                NewRoom.GroupSettings.TileS[i] = GBI.G_TX_MIRROR;
+                group.TileS = GBI.G_TX_MIRROR;
+            }
+            if (group.Name.ToLower().Contains("#clampx"))
+            {
+                NewRoom.GroupSettings.TileS[i] = GBI.G_TX_CLAMP;
+                group.TileS = GBI.G_TX_CLAMP;
+            }
+            if (group.Name.ToLower().Contains("#mirrory"))
+            {
+                NewRoom.GroupSettings.TileT[i] = GBI.G_TX_MIRROR;
+                group.TileT = GBI.G_TX_MIRROR;
+            }
+            if (group.Name.ToLower().Contains("#clampy"))
+            {
+                NewRoom.GroupSettings.TileT[i] = GBI.G_TX_CLAMP;
+                group.TileT = GBI.G_TX_CLAMP;
+            }
+            if (group.Name.ToLower().Contains("#ignorefog"))
+            {
+                NewRoom.GroupSettings.IgnoreFog[i] = true;
+                group.IgnoreFog = true;
+            }
+            if (group.Name.ToLower().Contains("#smoothrgbaledges"))
+            {
+                NewRoom.GroupSettings.SmoothRGBAEdges[i] = true;
+                group.SmoothRGBAEdges = true;
+            }
+            if (group.Name.ToLower().Contains("#pixelated"))
+            {
+                NewRoom.GroupSettings.Pixelated[i] = true;
+                group.Pixelated = true;
+            }
+            if (group.Name.ToLower().Contains("#envcolor"))
+            {
+                NewRoom.GroupSettings.EnvColor[i] = true;
+                group.EnvColor = true;
+            }
+            if (group.Name.ToLower().Contains("#reverselight"))
+            {
+                NewRoom.GroupSettings.ReverseLight[i] = true;
+                group.ReverseLight = true;
+            }
+            if (group.Name.ToLower().Contains("#maskalpha"))
+            {
+                NewRoom.GroupSettings.AlphaMask[i] = true;
+                group.AlphaMask = true;
+            }
+            if (group.Name.ToLower().Contains("#renderlast"))
+            {
+                NewRoom.GroupSettings.RenderLast[i] = true;
+                group.RenderLast = true;
+            }
+            if (group.Name.ToLower().Contains("#vertexnormals"))
+            {
+                NewRoom.GroupSettings.VertexNormals[i] = true;
+                group.VertexNormals = true;
+            }
+            if (group.Name.ToLower().Contains("#scalednormals"))
+            {
+                NewRoom.GroupSettings.ScaledNormals[i] = true;
+                group.ScaledNormals = true;
+            }
+            if (group.Name.ToLower().Contains("#texpointerplus1"))
+            {
+                NewRoom.GroupSettings.TexPointerPlus1[i] = true;
+                group.TexPointerPlus1 = true;
+            }
+            if (group.Name.ToLower().Contains("#lodgroup"))
+            {
+                int animatednum = 0;
+                if (!Int32.TryParse(group.Name.Substring2(group.Name.ToLower().IndexOf("#lodgroup") + 9, 1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out animatednum))
+                {
+                    MessageBox.Show("Bad usage of lodgroup tag. It should be #LODGroupX (X = group in hex) ", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                NewRoom.GroupSettings.LOD[i] = true;
+                group.LOD = true;
+                NewRoom.GroupSettings.LodGroup[i] = animatednum;
+                group.LodGroup = animatednum;
+            }
+            if (group.Name.ToLower().Contains("#loddistance"))
+            {
+                int animatednum = 0;
+                if (!Int32.TryParse(group.Name.Substring2(group.Name.ToLower().IndexOf("#loddistance") + 12, 4), out animatednum))
+                {
+                    MessageBox.Show("Bad usage of loddistance tag. It should be #LODDistanceXXXX (XXXX = distance in dec,) ", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                NewRoom.GroupSettings.LOD[i] = true;
+                group.LOD = true;
+                NewRoom.GroupSettings.LodDistance[i] = animatednum;
+                group.LodDistance = animatednum;
+            }
+            if (group.Name.ToLower().Contains("#pivot"))
+            {
+                string pivottag = group.Name.ToLower();
+                pivottag = pivottag.Substring(group.Name.IndexOf("#pivot") + 6);
+                pivottag = pivottag.Substring2(0, pivottag.IndexOf('#'));
+                string[] pivotvalues = pivottag.Split(',');
+                Vector3s pivotdata = new Vector3s(32767, 32767, 32767);
+                if (pivotvalues.Length != 3 || !Int16.TryParse(pivotvalues[0], out pivotdata.X) || !Int16.TryParse(pivotvalues[1], out pivotdata.Y) || !Int16.TryParse(pivotvalues[2], out pivotdata.Z))
+                {
+                    MessageBox.Show("Bad usage of Pivot tag. It should be #PivotX,X,X#", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                NewRoom.GroupSettings.PivotPoint[i] = pivotdata;
+                group.PivotPoint = pivotdata;
+            }
+            if (group.Name.ToLower().Contains("#tint"))
+            {
+                uint tintnum = 0;
+                if (!UInt32.TryParse(group.Name.Substring2(group.Name.ToLower().IndexOf("#tint") + 5, 6), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out tintnum))
+                {
+                    MessageBox.Show("Bad usage of Tint tag. It should be #TintXXXXXX (XXXXXX = RRGGBB in hex) ", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                tintnum = (uint)((NewRoom.GroupSettings.TintAlpha[i] & 0xFF000000) + tintnum);
+                //int alphanum = Convert.ToInt32(group.Name.ToLower().Substring(group.Name.IndexOf("#alpha") + 6, 2), 16);
+                NewRoom.GroupSettings.TintAlpha[i] = tintnum;
+                group.TintAlpha = tintnum;
+            }
+            if (group.Name.ToLower().Contains("#fc"))
+            {
+                ulong command = 0;
+                if (!UInt64.TryParse(group.Name.Substring2(group.Name.ToLower().IndexOf("#fc") + 3, 14), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out command))
+                {
+                    MessageBox.Show("Bad usage of FC tag. It should be #FCXXXXXXXXXXXXXX", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                NewRoom.GroupSettings.CustomDL[i,0] = command;
+                group.CustomDL[0] = command;
+                NewRoom.GroupSettings.Custom[i] = true;
+                group.Custom = true;
+            }
+            if (group.Name.ToLower().Contains("#d9"))
+            {
+                ulong command = 0;
+                if (!UInt64.TryParse(group.Name.Substring2(group.Name.ToLower().IndexOf("#d9") + 3, 14), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out command))
+                {
+                    MessageBox.Show("Bad usage of D9 tag. It should be #D9XXXXXXXXXXXXXX", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                NewRoom.GroupSettings.CustomDL[i, 1] = command;
+                group.CustomDL[1] = command;
+                NewRoom.GroupSettings.Custom[i] = true;
+                group.Custom = true;
+            }
+            if (group.Name.ToLower().Contains("#e2"))
+            {
+                ulong command = 0;
+                if (!UInt64.TryParse(group.Name.Substring2(group.Name.ToLower().IndexOf("#e2") + 3, 14), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out command))
+                {
+                    MessageBox.Show("Bad usage of E2 tag. It should be #E2XXXXXXXXXXXXXX", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                NewRoom.GroupSettings.CustomDL[i, 2] = command;
+                group.CustomDL[2] = command;
+                NewRoom.GroupSettings.Custom[i] = true;
+                group.Custom = true;
+            }
+            if (group.Name.ToLower().Contains("#group"))
+            {
+                string grouptag = group.Name.ToLower();
+                grouptag = grouptag.Substring(grouptag.IndexOf("#group") + 6);
+                grouptag = grouptag.Substring2(0, grouptag.IndexOf('#'));
+
+                int groupnumber = 0;
+                try
+                {
+                    if (!Int32.TryParse(grouptag, out groupnumber) && !Int32.TryParse(grouptag.Substring2(0, 3), out groupnumber))
+                    {
+                        MessageBox.Show("Bad usage of #Group tag, expected #GroupXX where XX is the ID", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    else
+                    {
+                        group.Type2Group = groupnumber;
+                    }
+                }
+                catch (System.ArgumentOutOfRangeException)
+                {
+                    MessageBox.Show("Bad usage of #Group tag, expected #GroupXX where XX is the ID", $"Error in {group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+
+        }
+
+
+        #endregion
+
+        #region Saving/Injection...
+
+        public void ConvertInject(string Filename, bool ConsecutiveRoomInject, bool ForceRGBATextures, string Game)
+        {
+            if (_Rooms.Count == 0)
+            {
+                MessageBox.Show("There's no rooms in this scene!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            var data = new List<byte>(File.ReadAllBytes(Filename));
+            ROM rom = MainForm.CheckVersion(data);
+
+            MainForm.n64preview = false;
+
+            ConvertScene(ConsecutiveRoomInject, ForceRGBATextures, this, rom.Game);
+
+            if (ColModel == null) return;
+
+            foreach(ZSceneHeader sceneheader in SceneHeaders)
+            {
+                if (!sceneheader.SameAsPrevious) sceneheader.Scene.ConvertScene(ConsecutiveRoomInject, ForceRGBATextures, this, rom.Game);
+            }
+
+
+            // fix scene header offsets
+            foreach (ZSceneHeader sceneheader in SceneHeaders)
+            {
+                if (sceneheader.SameAsPrevious)
+                {
+                    Helpers.Overwrite32(ref SceneData, sceneheader._InjectOffset, sceneheader.CloneFromHeader == 0 ? 0 : SceneHeaders[sceneheader.CloneFromHeader - 1]._InjectOffsetValue);
+                    for (int i = 0; i < Rooms.Count; i++)
+                    {
+                        Helpers.Overwrite32(ref _Rooms[i].RoomData, sceneheader._RoomInjectOffset[i], sceneheader.CloneFromHeader == 0 ? 0 : SceneHeaders[sceneheader.CloneFromHeader - 1]._RoomInjectOffsetValues[i]);
+                    }
+                }
+            }
+
+
+            List<String> TmpMsg = new List<string>();
+
+            // Crude inject method here
+                int RoomInjectOffset = _Rooms[0].InjectOffset;
+                RoomInjectOffset = InjectOffset + SceneData.Count;
+                for (int i = 0; i < _Rooms.Count; i++)
+                {
+#if DEBUG
+                    DebugConsole.WriteLine("INJECTING TO " + Filename + ", OFFSET " + RoomInjectOffset.ToString("X"));
+#endif
+                if (MainForm.settings.CheckEmptyOffset == true)
+                {
+                    string overridefile = CheckEmptyOffset(RoomInjectOffset, _Rooms[i].RoomData.ToArray().Length, rom, data);
+                    if (overridefile != "")
+                    {
+                        if (MessageBox.Show("There's a file '" + overridefile + "'in this offset, inject anyways?", "Warning",MessageBoxButtons.YesNo, MessageBoxIcon.Question,MessageBoxDefaultButton.Button1) == DialogResult.Yes)
+                        {
+                            Helpers.GenericInject(Filename, RoomInjectOffset, _Rooms[i].RoomData.ToArray(), _Rooms[i].RoomData.Count);
+                        }
+                    }
+                    else
+                        Helpers.GenericInject(Filename, RoomInjectOffset, _Rooms[i].RoomData.ToArray(), _Rooms[i].RoomData.Count);
+                }
+                else
+                {
+                    Helpers.GenericInject(Filename, RoomInjectOffset, _Rooms[i].RoomData.ToArray(), _Rooms[i].RoomData.Count);
+                }
+
+                    
+
+                    TmpMsg.Add("Room " + i + " offset: " + RoomInjectOffset.ToString("X8") + " - " + (RoomInjectOffset + _Rooms[i].FullDataLength).ToString("X8"));
+
+                    RoomInjectOffset += _Rooms[i].FullDataLength;
+                }
+
+            //titlecard edit
+
+            BinaryWriter BWS;
+
+            if (TitleCard.Length > 0)
+            {
+                List<Byte> Output = new List<byte>();
+
+                MemoryStream ms = new MemoryStream(TitleCard);
+
+                BWS = new BinaryWriter(File.OpenWrite(Filename));
+
+                BWS.Seek(RoomInjectOffset, SeekOrigin.Begin);
+
+                Bitmap texture = (Bitmap)(Image.FromStream(ms));
+
+                int x = 0;
+                int y = 0;
+                int gray = 0;
+                int alpha = 0;
+
+                for (int i = 0; y < 72; i++)
+                {
+                    //   DebugConsole.WriteLine(((0x4F & 0xF0) >> 4).ToString("X"));
+
+                    if (y < texture.Height)
+                    {
+                        gray = (texture.GetPixel(x, y).R != 0) ? texture.GetPixel(x, y).R / 17 : 0;
+                        alpha = (texture.GetPixel(x, y).A != 0) ? texture.GetPixel(x, y).A / 17 : 0;
+                        Output.Add((byte)(0x00 | (gray << 4) | (alpha)));
+                    }
+                    else
+                    {
+                        Output.Add(0x00);
+                    }
+
+
+                    x++;
+                    if (x >= texture.Width) { x = 0; y++; }
+                }
+                BWS.Write(Output.ToArray());
+
+                int Offset = (int)rom.SceneTable + (SceneNumber * 0x14 + 0x08);
+
+                BWS.Seek(Offset, SeekOrigin.Begin);
+                BWS.Write((BitConverter.GetBytes(RoomInjectOffset).Reverse()).ToArray());
+                BWS.Seek(Offset + 4, SeekOrigin.Begin);
+                BWS.Write((BitConverter.GetBytes(RoomInjectOffset + 10368).Reverse()).ToArray());
+                BWS.Close();
+            }
+
+
+             if (MainForm.settings.CheckEmptyOffset == true)
+            {
+                string overridefile = CheckEmptyOffset(InjectOffset, SceneData.ToArray().Length, rom, data);
+                if (overridefile != "")
+                {
+                    if (MessageBox.Show("There's a file '" + overridefile + "'in this offset, inject anyways?", "Warning", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1) == DialogResult.Yes)
+                    {
+                        Helpers.GenericInject(Filename, InjectOffset, SceneData.ToArray(), SceneData.Count);
+                    }
+                }
+                else
+                    Helpers.GenericInject(Filename, InjectOffset, SceneData.ToArray(), SceneData.Count);
+            }
+            else
+               Helpers.GenericInject(Filename, InjectOffset, SceneData.ToArray(), SceneData.Count);
+
+
+            List<byte> Temp = new List<byte>();
+            Helpers.Append32(ref Temp, (uint)InjectOffset);
+            Helpers.Append32(ref Temp, (uint)(InjectOffset + SceneData.Count));
+
+            if (MainForm.settings.printoffsets)
+            {
+                MainForm.InjectMessages.Add("Scene offset: " + InjectOffset.ToString("X8") + " - " + (InjectOffset + SceneData.Count).ToString("X8"));
+                MainForm.InjectMessages.AddRange(TmpMsg);
+            }
+
+
+            List<byte> Temp2 = new List<byte>();
+            Helpers.Append32(ref Temp2, (uint)0x00000000 | (uint)((MainForm.settings.command1AOoT && MainForm.NormalHeader.SegmentFunctions.FindIndex(x => x.Functions.Count > 0) != -1) ? 0x4 : SceneSettings) << 16);
+
+
+
+
+            BWS = new BinaryWriter(File.OpenWrite(Filename));
+            int TableOffset;
+            if (rom.Game == "OOT")//oot debug rom / mm gcn usa rom
+                TableOffset = (int) (rom.SceneTable + (SceneNumber * 0x14));
+            else
+                TableOffset = (int) (rom.SceneTable + (SceneNumber * 0x10));
+
+
+            BWS.Seek(TableOffset, SeekOrigin.Begin);
+            BWS.Write(Temp.ToArray());
+
+          
+
+            if (rom.Game == "MM")
+            {
+                bool hasanim = false;
+                foreach (ZRoom room in Rooms)
+                {
+                    if (hasanim) break;
+                    foreach(ObjFile.Group group in room.TrueGroups)
+                    {
+                        if (group.Animated)
+                        {
+                            hasanim = true;
+                            break;
+                        }
+                    }
+                }
+
+                BWS.Seek(TableOffset+0xB, SeekOrigin.Begin);
+                BWS.Write((hasanim) ? 0x01 : 0x00);
+                
+            }
+
+            //  DebugConsole.WriteLine("tableoffset: " + (TableOffset + 16).ToString("X"));
+
+
+            if (rom.Game == "OOT")
+            {
+                BWS.Seek(TableOffset + 16, SeekOrigin.Begin);
+                BWS.Write(Temp2.ToArray()); // Render function
+
+                // Cutscene table edit
+
+                if (CutsceneTableRow != -1 && Cutscene.Count > 0 && cachecutsceneoffset != 0)
+                {
+                    int ctableoffset = (int) (rom.CutsceneTableStart + (CutsceneTableRow * 8));
+                    if (ctableoffset > rom.CutsceneTableEnd -1)
+                    {
+                        MessageBox.Show("Cutscene Table row is outside range! aborting cutscene table editing", "Injection", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    else
+                    {
+                        List<byte> Temp3 = new List<byte>();
+
+
+                        Helpers.Append16(ref Temp3, (ushort) CutsceneEntrance);
+                        Temp3.Add(2);
+                        Temp3.Add((byte) CutsceneFlag);
+                        Helpers.Append32(ref Temp3, cachecutsceneoffset);
+
+
+                        BWS.Seek(ctableoffset, SeekOrigin.Begin);
+                        BWS.Write(Temp3.ToArray());
+
+                        MainForm.InjectMessages.Add("Updated row " + CutsceneTableRow + " of cutscene table");
+                    }
+
+                }
+
+                // restriction flag edit 
+
+                //List<byte> byteList = new List<byte>((IEnumerable<byte>)File.ReadAllBytes(MainForm.GlobalROM));
+           
+                for (uint restrictionFlagStart = rom.RestrictionFlagStart; (long)restrictionFlagStart < (long)((int)rom.RestrictionFlagEnd - 1); restrictionFlagStart += 4)
+                {
+                    if ((int)data[(int)restrictionFlagStart] == this.SceneNumber)
+                    {
+                    
+
+                        List<byte> Temp4 = new List<byte>();
+                        Helpers.Append32(ref Temp4,(RestrictionFlags | ((uint)SceneNumber << 24)));
+
+                        BWS.Seek((int)restrictionFlagStart, SeekOrigin.Begin);
+                        BWS.Write(Temp4.ToArray());
+                        break;
+                    }
+                }
+
+    
+                
+
+                if (SceneSettings != 0 && !MainForm.settings.command1AOoT)
+                {
+
+                    int slot = -1;
+
+                    XmlNodeList animnodes = XMLreader.getXMLNodes("SceneAnimations", "Function");
+                    AnimationItem AnimNode = new AnimationItem();
+                    if (animnodes != null)
+                        foreach (XmlNode node in animnodes)
+                        {
+                            XmlAttributeCollection nodeAtt = node.Attributes;
+                            if (System.Convert.ToByte(nodeAtt["Key"].Value, 16) == SceneSettings)
+                            {
+                                if (nodeAtt["Slot"] != null)
+                                {
+                                    slot = Convert.ToInt32(nodeAtt["Slot"].Value);
+                                }
+                                break;
+                            }
+                        }
+
+                    if (slot != -1)
+                    {
+                        Dictionary<int,uint> specialtextures = new Dictionary<int, uint>();
+
+                        foreach (NTexture texture in Textures)
+                        {
+                            if (texture.Name != null && texture.Name.ToLower().Contains("#special"))
+                            {
+                                int key = 0;
+                                string s = texture.Name.Substring2(texture.Name.ToLower().IndexOf("#special") + 8, 1);
+                                if (!Int32.TryParse(s, out key))
+                                {
+                                    MessageBox.Show("Bad usage of texture tag. It should be #SpecialX where X is the number following an order. ", $"Error in {texture.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    break;
+                                }
+                                if (!specialtextures.ContainsKey(key))
+                                {
+                                    specialtextures.Add(key, texture.TexOffset | 02 << 24);
+                                }
+                            }
+                        }
+
+                        Temp2.Clear();
+
+                        for(int i = 0; i < specialtextures.Count; i++)
+                        {
+                            if (!specialtextures.ContainsKey(i))
+                            {
+                                MessageBox.Show("special texture ID " + i + " is missing, you need to have special textures in order, starting from 0. ", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                break;
+                            }
+                            else
+                            {
+                                Helpers.Append32(ref Temp2, specialtextures[i]);
+                                MainForm.InjectMessages.Add("Special texture inject " + specialtextures[i].ToString("X"));
+                            }
+                        }
+
+                        BWS.Seek((int) (rom.SpecialTextureTable + (8 * slot) + (slot > 1 ? 32 : 0) + (slot > 7 ? 8 : 0)), SeekOrigin.Begin);
+                        BWS.Write(Temp2.ToArray()); // Render function
+                    }
+                }
+
+            }
+
+
+            BWS.Close();
+        }
+
+        public string CheckEmptyOffset(int offset, int size, ROM rom, List<byte> data)
+        {
+
+            return "";
+
+            int StartDMAOffset = (int)rom.DmaTableStart;
+            int EndDMAOffset = (int)rom.DmaTableEnd;
+            int StartSceneOffset = (int)rom.SceneTable;
+            int EndSceneOffset = (int)rom.SceneTableEnd;
+
+            List<DMAFile> files = new List<DMAFile>();
+
+
+            string file = "";
+            bool found = false;
+            int incr = 0;
+            uint foundstartoffset = 0;
+            uint foundendoffset = 0;
+
+            
+            for (int i = StartDMAOffset; i < EndDMAOffset - 1; i += 0x10)
+            {
+                uint startoffset = Helpers.Read32(data, i);
+                uint endoffset = Helpers.Read32(data, i + 4);
+                if ((offset >= startoffset && offset <= startoffset) || (offset+size > startoffset && offset+size < endoffset))
+                {
+                    found = true;
+                    file = "File #" + incr;
+                    foundstartoffset = startoffset;
+                    foundendoffset = endoffset;
+                    break;
+                }
+                incr++;
+            }
+
+            if (found)
+            {
+                int increment = rom.Game == "OOT" ? 0x14 : 0x10;
+
+                    uint startoffset = Helpers.Read32(data, StartSceneOffset + (increment * SceneNumber));
+                    uint endoffset = Helpers.Read32(data, StartSceneOffset + (increment * SceneNumber) + 4);
+
+
+                    for (int y = (int)startoffset; y < endoffset - 1; y += 4)
+                    {
+                        uint test = Helpers.Read32(data, y);
+
+                        //check room command and segment offset 02
+                        if ((test & 0xFF00FFFF) == 0x04000000 && data[y + 4] == 0x02)
+                        {
+                            uint roomlist = Helpers.Read24(data, y + 5) + startoffset;
+                            int roomcount = data[y + 1];
+
+                            int r = roomcount - 1;
+                            endoffset = Helpers.Read32(data, (int)(roomlist + (r * 0x8) + 4));
+
+                           if ((foundstartoffset >= startoffset && foundstartoffset <= endoffset) || (foundendoffset >= startoffset && foundendoffset <= endoffset))
+                           {
+                                 return "";
+                           }
+
+                            break;
+                        }
+                    }
+                    
+                
+
+            }
+            return file;
+        }
+        //save binary / send to z64rom
+        public void ConvertSave(string Filepath, bool ConsecutiveRoomInject, bool ForceRGBATextures, int zzrp)
+        {
+            string game = (!MainForm.settings.MajorasMask) ? "OOT" : "MM";
+            MainForm.RoomHeaderMessages = new List<List<String>>();
+            MainForm.HeaderMessages = new List<string>();
+
+            if (zzrp > 0 && zzrp != 4)
+            {
+                string newdir = "";
+                if (zzrp != 3)
+                {
+                    if (!Directory.Exists(Filepath + "Scene"))
+                    {
+                        Directory.CreateDirectory(Filepath + "Scene");
+                    }
+                    if (zzrp == 1)
+                    {
+                        newdir = Filepath + @"Scene\" + SceneNumber + " - " + Helpers.MakeValidFileName(Name);
+                    }
+
+                    else if (zzrp == 2)
+                    {
+                        newdir = Filepath + @"Scene\0x" + SceneNumber.ToString("X2") + " - " + Helpers.MakeValidFileName(Name);
+                    }
+
+                    else if (zzrp == 5)
+                    {
+                        newdir = Filepath + @"src\scene\" + SceneNumber.ToString("000") + "-" + Helpers.MakeValidFileName(Name);
+                    }
+                }
+                else
+                {
+                    newdir = Filepath + @"rom\scene\0x" + SceneNumber.ToString("X2") + "-" + Helpers.MakeValidFileName(Name);
+                    //Directory.CreateDirectory(Filepath + @"rom/scene/0x" + SceneNumber.ToString("X2") + "-" + Helpers.MakeValidFileName(Name));
+                }
+                string[] subdirectoryEntries = (zzrp != 3) ? Directory.GetDirectories(Filepath + "Scene") : Directory.GetDirectories(Filepath + "rom\\scene");
+                string target = "";
+                foreach (string subdirectory in subdirectoryEntries)
+                {
+                    string number = subdirectory;
+                    if (number.Contains(Path.DirectorySeparatorChar)) number = number.Substring(number.LastIndexOf(Path.DirectorySeparatorChar) + 1);
+                    if (number.Contains(" ") && zzrp != 3)
+                        number = number.Split(' ')[0];
+                    else
+                        number = number.Split('-')[0];
+                    if (number == SceneNumber + "" || number == "0x" + this.SceneNumber.ToString("X2")) 
+                    {
+                        target = subdirectory;
+                        if (target != newdir) break;
+                    }
+                }
+                if (target == "")
+                {
+
+                    Directory.CreateDirectory(newdir);
+                    target = newdir;
+
+                }
+                else if (target != newdir)
+                {
+
+                    if (MessageBox.Show("There's already a scene with this scene ID but different name: \n" + Path.GetFileName(target) + "\nSelecting Yes will replace it, selecting No will abort the operation.", "WARNING",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1) != DialogResult.Yes)
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        if (zzrp == 1)
+                            Directory.Move(target, Filepath + "Scene/" + SceneNumber + " - " + Helpers.MakeValidFileName(Name));
+                        else if (zzrp == 2)
+                            Directory.Move(target, Filepath + "Scene/0x" + SceneNumber.ToString("X2") + " - " + Helpers.MakeValidFileName(Name));
+                        else if (zzrp == 5)
+                            Directory.Move(target, Filepath + "src/scene" + SceneNumber.ToString("000") + "-" + Helpers.MakeValidFileName(Name));
+                        else //z64rom
+                            Directory.Move(target, Filepath + "rom/scene/0x" + SceneNumber.ToString("X2") + "-" + Helpers.MakeValidFileName(Name));
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Failed to replace " + Path.GetFileName(target) + " with 0x" + SceneNumber.ToString("X2") + "-" + Helpers.MakeValidFileName(Name) + ". Please fix it manually, aborting operation", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    if (zzrp == 1)
+                        target = Filepath + @"Scene/" + SceneNumber + " - " + Helpers.MakeValidFileName(Name);
+                    else if (zzrp == 2)
+                        target = Filepath + @"Scene/0x" + SceneNumber.ToString("X2") + " - " + Helpers.MakeValidFileName(Name);
+                    else if (zzrp == 5)
+                        target = Filepath + @"src/scene" + SceneNumber.ToString("000") + "-" + Helpers.MakeValidFileName(Name);
+                    else //z64rom
+                        target = Filepath + @"rom/scene/0x" + SceneNumber.ToString("X2") + "-" + Helpers.MakeValidFileName(Name);
+                }
+                Filepath = target + Path.DirectorySeparatorChar;
+
+            }
+
+            MainForm.n64preview = false;
+
+            ConvertScene(ConsecutiveRoomInject, ForceRGBATextures,this, game);
+
+
+            DebugConsole.WriteLine("scene count" + SceneData.Count.ToString("X"));
+
+            foreach (ZSceneHeader sceneheader in SceneHeaders)
+            {
+                if (!sceneheader.SameAsPrevious) sceneheader.Scene.ConvertScene(ConsecutiveRoomInject, ForceRGBATextures, this, game);
+
+            }
+
+            // fix scene header offsets
+            foreach (ZSceneHeader sceneheader in SceneHeaders)
+            {
+                if (sceneheader.SameAsPrevious)
+                {
+                    Helpers.Overwrite32(ref SceneData, sceneheader._InjectOffset, sceneheader.CloneFromHeader == 0 ? 0x00000000 : SceneHeaders[sceneheader.CloneFromHeader-1]._InjectOffsetValue);
+                    for (int i = 0; i < Rooms.Count; i++)
+                    {
+                        Helpers.Overwrite32(ref _Rooms[i].RoomData, sceneheader._RoomInjectOffset[i], sceneheader.CloneFromHeader == 0 ? 0x00000000 : SceneHeaders[sceneheader.CloneFromHeader - 1]._RoomInjectOffsetValues[i]);
+                    }
+                }
+            }
+
+            if (zzrp == 3) //if z64rom, we delete all zroom and zovl files first
+            {
+                string[] files = Directory.GetFiles(Filepath);
+                for (int f = 0; f < files.Length; f++)
+                {
+                    if (Path.GetExtension(files[f]) == ".zroom")
+                        File.Delete(files[f]);
+                    if (MainForm.settings.ExportHeaderFile && Path.GetExtension(files[f]) == ".zovl")
+                        File.Delete(files[f]);
+                }
+
+            }
+
+            if (zzrp != 4) //is not decomp
+            {
+
+                for (int i = 0; i < _Rooms.Count; i++)
+                {
+                    string SaveRoomTo = "";
+                    string extension = zzrp == 3 ? ".zroom" : ".zmap";
+
+                
+
+                    if (zzrp > 0)
+                        SaveRoomTo = Filepath + "room_" + i + extension;
+                    else if (MainForm.settings.Zmapoffsetnames)
+                        SaveRoomTo = Filepath + (_Rooms[i].InjectOffset+_Rooms[i].FullDataLength).ToString("X8") + extension;
+                    else
+                        SaveRoomTo = Filepath + Helpers.MakeValidFileName(Name) + "_room_" + i + extension;
+
+                    DebugConsole.WriteLine("SAVING DATA TO " + SaveRoomTo);
+
+                    if (MainForm.IsFileLocked(SaveRoomTo))
+                    { 
+                        MessageBox.Show("File " + SaveRoomTo + " is in use, try again later.", "Saving failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    File.Delete(SaveRoomTo);
+
+                    BinaryWriter BWR = new BinaryWriter(File.OpenWrite(SaveRoomTo));
+                    BWR.Write(_Rooms[i].RoomData.ToArray());
+                    BWR.Close();
+
+                }
+                
+                string SaveSceneTo = "";
+                if (zzrp > 0)
+                    SaveSceneTo = Filepath + "scene.zscene";
+                else
+                    SaveSceneTo = Filepath + Helpers.MakeValidFileName(Name) + "_scene.zscene";
+
+                DebugConsole.WriteLine("SAVING DATA TO " + SaveSceneTo);
+
+
+                if (MainForm.IsFileLocked(SaveSceneTo))
+                {
+                    MessageBox.Show("File " + SaveSceneTo + " is in use, try again later.", "Saving failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                File.Delete(SaveSceneTo);
+
+                BinaryWriter BWS = new BinaryWriter(File.OpenWrite(SaveSceneTo));
+                BWS.Write(SceneData.ToArray());
+                BWS.Close();
+
+                if (zzrp > 0 && zzrp != 4)
+                {
+                    uint restriction = RestrictionFlags;
+
+                
+                    string filenameconf = (zzrp != 3 && zzrp != 5) ? "conf.txt" : "config.toml";
+
+                    if (File.Exists(Filepath + filenameconf)) File.Delete(Filepath + filenameconf);
+
+                    StreamWriter sw = File.CreateText(Filepath + filenameconf);
+                    if (zzrp == 1)
+                        sw.Write("unk-a: 0\r\nunk-b: 0\r\nshader: " + ((MainForm.settings.command1AOoT && MainForm.NormalHeader.SegmentFunctions.FindIndex(x => x.Functions.Count > 0) != -1) ? 0x4 : SceneSettings) + "\r\nsave: " + SceneNumber + "\r\nrestrict: " + restriction);
+                    else if (zzrp == 2)
+                        sw.Write("unk-a 0\r\nunk-b 0\r\nshader " + ((MainForm.settings.command1AOoT && MainForm.NormalHeader.SegmentFunctions.FindIndex(x => x.Functions.Count > 0) != -1) ? 0x4 : SceneSettings) + "\r\nsave " + SceneNumber + "\r\nrestrict " + restriction);
+                    else
+                    {
+                        string restrictiontext = "";
+                        var dict = new Dictionary<string, uint>(){
+                            { "\tbottles     = ",  ((((RestrictionFlags & 0x00FF0000) >> 16) & 0x03)) },
+                            { "\ta_button    = ",  ((((RestrictionFlags & 0x00FF0000) >> 16) & 0x0C)) },
+                            { "\tb_button    = ",  ((((RestrictionFlags & 0x00FF0000) >> 16) & 0x30)) },
+                            { "\tunused      = ",  ((((RestrictionFlags & 0x00FF0000) >> 16) & 0xC0)) },
+                            { "\twarp_song   = ",  ((((RestrictionFlags & 0x0000FF00) >> 8) & 0x03))  },
+                            { "\tocarina     = ",  ((((RestrictionFlags & 0x0000FF00) >> 8) & 0x0C))  },
+                            { "\thookshot    = ",  ((((RestrictionFlags & 0x0000FF00) >> 8) & 0x30))  },
+                            { "\ttrade_item  = ",  ((((RestrictionFlags & 0x0000FF00) >> 8) & 0xC0))  },
+                            { "\tother       = ",  ((((RestrictionFlags & 0x000000FF)) & 0x03))       },
+                            { "\tdin_nayru   = ",  ((((RestrictionFlags & 0x000000FF)) & 0x0C))       },
+                            { "\tfarores     = ",  ((((RestrictionFlags & 0x000000FF)) & 0x30))       },
+                            { "\tsun_song    = ",  ((((RestrictionFlags & 0x000000FF)) & 0xC0))       },
+                        };
+
+                        foreach (var i in dict)
+                        {
+                            restrictiontext += i.Key;
+                            if (i.Value != 0) restrictiontext += "false\r\n";
+                            else restrictiontext += "true\r\n";
+                        }
+
+                        sw.Write("# " + Name + "\r\n" +
+                                 "draw_func_index = " + ((MainForm.settings.command1AOoT && MainForm.NormalHeader.SegmentFunctions.FindIndex(x => x.Functions.Count > 0) != -1) ? 0x4 : SceneSettings) + "\r\n" +
+                                 "[enables]\r\n" + restrictiontext);
+                    }
+                    sw.Close();
+
+                    if (MainForm.settings.ExportHeaderFile)
+                    {
+                        string roomheaderfile = Filepath + "scene.h";
+                        if (File.Exists(roomheaderfile)) File.Delete(roomheaderfile);
+
+                        string outputmsg = "#include <uLib.h>\n\n";
+                        
+                        while (MainForm.HeaderMessages.Count != 0)
+                        {
+                            outputmsg += MainForm.HeaderMessages[0] + "\n";
+                            MainForm.HeaderMessages.RemoveAt(0);
+                        }
+
+                        File.WriteAllText(roomheaderfile, outputmsg);
+
+                        /*
+                        MessageBox.Show("Done! \n" + outputmsg + "\nClose this window to copy this to your clipboard", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        Clipboard.SetText(outputmsg);*/
+                    }
+
+
+                }
+                
+                //title card
+
+                if (TitleCard.Length > 0 || rom64.MMTitleCards && MMTitleCard != "")
+                {
+                    if (!rom64.MMTitleCards)
+                    {
+                        MemoryStream ms = new MemoryStream(TitleCard);
+                        Image returnImage = Image.FromStream(ms);
+                        returnImage.Save(Filepath + "title.png", ImageFormat.Png);
+                    }
+                    else
+                    {
+                        if (File.Exists(Filepath + "title.png")) File.Delete(Filepath + "title.png");
+                        if (MMTitleCard != "") File.WriteAllText(Filepath + "title.txt", MMTitleCard);
+                    }
+                }
+
+                
+
+            }
+            else //decomp
+            {
+                StreamWriter sw = File.CreateText(Filepath + Name + "_scene.c");
+
+                Helpers.AddPadding(ref SceneData, 8);
+
+                string output = "#include \"ultra64.h\"\n";
+
+                for(int i = 0; i < Rooms.Count; i++)
+                {
+                    output += "extern u8 _" + Name + "_room_" + i + "SegmentRomStart[];\n";
+                    output += "extern u8 _" + Name + "_room_" + i + "SegmentRomEnd[];\n";
+                }
+
+                output += "u32 " + Name + "_scene[] = {\n";
+
+                int column = 0;
+                bool command4 = false;
+                bool command18 = false;
+                uint roomlistoffset = 9;
+                uint headerlistoffset = 9;
+                List<uint> headeroffsets = new List<uint>();
+
+                for (int i = 0; i < SceneData.Count - 1; i += 4)
+                {
+                    uint curvalue = Helpers.Read32(SceneData, i);
+                    uint curvaluemasked = Helpers.Read32(SceneData, i) & 0x00FFFFFF;
+
+                    int header = headeroffsets.FindIndex(x => x == i);
+                    if (header != -1 && curvalue != 0)
+                    {
+                        command4 = false;
+                        command18 = false;
+                    }
+                    if (!command4 && ((curvalue & 0xFF00FFFF) == 0x04000000 && SceneData[i + 4] == 0x02))
+                    {
+                        roomlistoffset = Helpers.Read32(SceneData, i + 4) & 0x00FFFFFF;
+                        command4 = true;
+
+                    }
+                    if (!command18 && ((curvalue & 0xFFFFFFFF) == 0x18000000 && SceneData[i + 4] == 0x02))
+                    {
+                        headerlistoffset = Helpers.Read32(SceneData, i + 4) & 0x00FFFFFF;
+                        command18 = true;
+
+                    }
+                    if (i == roomlistoffset)
+                    {
+                        output += "\n";
+                        for (int y = 0; y < Rooms.Count; y++)
+                        {
+                            
+                            output += "(u32)_" + Name + "_room_" + y + "SegmentRomStart, ";
+                            output += "(u32)_" + Name + "_room_" + y + "SegmentRomEnd, // room " + y + "\n";
+                            i += 8;
+                        }
+                        column = 0;
+                        i -= 4;
+                        continue;
+                    }
+                    if (i == headerlistoffset)
+                    {
+                        output += "\n";
+                        for (int y = 0; y < SceneHeaders.Count; y++)
+                        {
+                            uint headervaluemasked = Helpers.Read32(SceneData, i) & 0x00FFFFFF;
+                            if (headervaluemasked == 0) output += "0x00000000, ";
+                            else
+                            {
+                                output += "(u32*)(((u8*)" + Name + "_scene" + ")+0x" + headervaluemasked.ToString("X") + "), \n";
+                                headeroffsets.Add(headervaluemasked);
+                            }
+                            i += 4;
+                            
+                        }
+                        column = 0;
+                        i -= 4;
+                        continue;
+                    }
+                    //if (_Rooms.FindIndex(x => x.InjectOffset ))
+
+                    output += "0x" + curvalue.ToString("X8") + ", ";
+                    column++;
+                    if (column == 8)
+                    {
+                        output += "\n";
+                        column = 0;
+                    }
+                }
+
+                output = output.Substring(0, output.LastIndexOf(","));
+                output += "\n};";
+
+                sw.Write(output);
+
+                sw.Close();
+
+                for (int i = 0; i < Rooms.Count; i++)
+                {
+                    sw = File.CreateText(Filepath + Name + "_room_" + i + ".c");
+                    output = "";
+                    output += "#include \"ultra64.h\"\n";
+                    output += "u32 " + Name + "_room_" + i + "[] = {\n";
+
+                    column = 0;
+
+                    Helpers.AddPadding(ref Rooms[i].RoomData, 8);
+
+                    for (int y = 0; y < Rooms[i].RoomData.Count - 1; y += 4)
+                    {
+                        
+                        output += "0x" + Helpers.Read32(Rooms[i].RoomData, y).ToString("X8") + ", ";
+                        column++;
+                        if (column == 8)
+                        {
+                            output += "\n";
+                            column = 0;
+                        }
+                    }
+
+                    output = output.Substring(0, output.LastIndexOf(","));
+                    output += "\n};";
+
+                    sw.Write(output);
+
+                    sw.Close();
+                }
+
+
+
+                
+            }
+            
+        }
+
+        #endregion
+
+        #region ... Preview
+
+        public void RegisterActorPreview(
+            UInt16 key,
+            UInt32 offset,
+            string[] offsetsstr,
+            string[] textureoffsetsstr,
+            float scale,
+            UInt32 dlistcount,
+            bool animated,
+            int hierarchy,
+            string var,
+            UInt16 animation,
+            short Yoff,
+            uint bank,
+            string[] colors,
+            ushort scalemask,
+            string scaletarget,
+            float[] scalearray,
+            ushort colormask,
+            string colortarget,
+            string[][] envcolorarray,
+            string[][] primcolorarray,
+            short roty,
+            bool[] ignorerot,
+            UInt32 collision,
+            string file) {
+            
+            UInt32[] offsets = new uint[offsetsstr.Length];
+            UInt32[] textureoffsets = new uint[15];
+            offset = offset | (bank << 24);
+
+
+            for(int i = 0; i < offsetsstr.Length; i++)
+                offsets[i] = Convert.ToUInt32(offsetsstr[i], 16 ) | (bank << 24);
+
+            for (int i = 8; i < textureoffsetsstr.Length+8; i++)
+                textureoffsets[i] = Convert.ToUInt32(textureoffsetsstr[i-8], 16) | (bank << 24);
+            
+            ZObjRender objrender = new ZObjRender(key,var,scale);
+
+            objrender.Yoff = Yoff;
+            objrender.ScaleMask = scalemask;
+            objrender.ScaleTarget = scaletarget;
+            objrender.ScaleArray = scalearray;
+            objrender.RotY = roty;
+            objrender.IgnoreRot = ignorerot;
+
+            objrender.ColorMask = colormask;
+            objrender.ColorTarget = colortarget;
+            objrender.EnvColorArray = new RGBA8[envcolorarray.Length];
+            objrender.PrimColorArray = new RGBA8[primcolorarray.Length];
+
+            ushort tmp = scalemask;
+            while ((tmp & 1) == 0 && tmp != 0)
+            {
+                tmp = (ushort)(tmp >> 1);
+                objrender.ScalePosition += 1;
+            }
+
+            tmp = colormask;
+            while ((tmp & 1) == 0 && tmp != 0)
+            {
+                tmp = (ushort)(tmp >> 1);
+                objrender.ColorPosition += 1;
+            }
+
+            if (colors.Count() == 4 || colors.Count() == 8) {
+                for (int i = 0; i < 4; i++) {
+                    int b = colors[i].Contains("0x") ? 16 : 10;
+
+                    objrender.envColor.setIndex(i, Convert.ToInt32(colors[i], b));
+                }
+
+                objrender.useColor = true;
+            }
+
+            if (colors.Count() == 8) {
+                for (int i = 4; i < 8; i++) {
+                    int b = colors[i].Contains("0x") ? 16 : 10;
+
+                    objrender.primColor.setIndex(i - 4, Convert.ToInt32(colors[i], b));
+                }
+            }
+
+            if (envcolorarray.Length > 0)
+            {
+                for (int y = 0; y < envcolorarray.Length; y++)
+                {
+                    objrender.EnvColorArray[y] = new RGBA8(0);
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int b = envcolorarray[y][i].Contains("0x") ? 16 : 10;
+
+                        objrender.EnvColorArray[y].setIndex(i, Convert.ToInt32(envcolorarray[y][i], b));
+                    }
+                }
+
+            }
+
+            if (primcolorarray.Length > 0)
+            {
+                for (int y = 0; y < primcolorarray.Length; y++)
+                {
+                    objrender.PrimColorArray[y] = new RGBA8(0);
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int b = primcolorarray[y][i].Contains("0x") ? 16 : 10;
+
+                        objrender.PrimColorArray[y].setIndex(i, Convert.ToInt32(primcolorarray[y][i], b));
+                    }
+                }
+
+            }
+
+            
+
+            List<byte> ClearBlock = new List<byte>(File.ReadAllBytes(file));
+
+            if (collision != 1)
+            {
+                objrender.collision = MainForm.importCollision(ClearBlock, (int)collision, true);
+                objrender.collision.Prepare(objrender.collision.Groups);
+            }
+
+
+            UcodeSimulator.currentfilename = file;
+            UcodeSimulator.TextureCache.Clear();
+            Array.Copy(textureoffsets, UcodeSimulator.textureoffsets, textureoffsets.Length);
+            SayakaGL.GameHandler.LoadToRAM(ClearBlock.ToArray(), (int) bank);
+
+
+
+            if (animated)
+            {
+                byte[] zobj = ClearBlock.ToArray();
+                uint limb_count = 0;
+                int hierarchyfound = 0;
+                int animationfound = 0;
+
+                for (int i = 0; i < zobj.Length; i += 0x4)
+                {
+                    if (zobj[i] == bank && (zobj[i + 3] & 3) == 0 && zobj[i + 4] != 0 && zobj[i + 5] == 0x00 && zobj[i + 6] == 0x00 && zobj[i + 7] == 0x00)
+                    {
+                        List<byte> zobjlist = new List<byte>(zobj);
+                        if (Helpers.Read24(zobj.ToList(), i + 1) > zobj.Length) continue;
+
+                        int check = Helpers.Read24S(zobj.ToList(),i + 1);
+                        int check_prev = Helpers.Read24S(zobj.ToList(), i - 3);
+                        if (check - check_prev != 0x0C && check - check_prev != 0x10)
+                            continue;
+                        
+
+                        if (++hierarchyfound != hierarchy)
+                        {
+                            if (hierarchy == 14) DebugConsole.WriteLine("hf " + hierarchyfound);
+                            continue;
+                        }
+                            
+                            
+                        
+                        limb_count = zobjlist[i+4];
+                        offset = (uint) Helpers.Read24S(zobjlist, i + 1);
+                        int maxframes = 0;
+                        int animrotvaloffset = 0x00;
+                        int animrotindexoffset = 0x00;
+                        int limit = 0;
+
+                        for (int ii = 0; ii < zobj.Length; ii += 4)
+                        {
+                            if (!(ii + 4 > zobj.GetUpperBound(0)))
+                            {
+                                if (zobj[ii + 2] == 0x00 && zobj[ii + 3] == 0x00 && zobj[ii + 4] == bank && zobj[ii + 8] == bank && zobj[ii + 14] == 0x00 && zobj[ii + 15] == 0x00 && Helpers.Read24S(zobjlist, ii + 5) < zobj.Length)
+                                {
+                                    animationfound++;
+
+                                    if (animationfound == animation || animationfound == 1)
+                                    {
+                                        maxframes = Helpers.Read16(zobjlist, ii);
+                                        animrotvaloffset = Helpers.Read24S(zobjlist, ii + 5);
+                                        animrotindexoffset = Helpers.Read24S(zobjlist, ii + 9);
+                                        limit = Helpers.Read16(zobjlist, ii + 12);
+
+                                        if (animationfound == animation)
+                                                break;
+                                    }
+                                    
+                                }
+                            }
+                        }
+                        
+                        int counter = 0;
+                        short[] prevlimb = new short[] { 0, 0, 0 };
+
+                        while (counter != limb_count)
+                        {
+                            Limb limb = new Limb();
+                            limb.DList = new List<UcodeSimulator.DisplayListStruct>();
+                            int limboffset = Helpers.Read24S(new List<byte>(zobj), (int)(offset + 1));
+                            limb.x = Helpers.Read16S(zobjlist, limboffset);
+                            limb.y = Helpers.Read16S(zobjlist, limboffset + 2);
+                            limb.z = Helpers.Read16S(zobjlist, limboffset + 4);
+                            limb.firstchild = (sbyte)zobjlist[limboffset + 6];
+                            limb.nextchild = (sbyte)zobjlist[limboffset + 7];
+                            limb.rotation = new Vector3(0,0,0);
+                            limb.rotation.X = Helpers.Read16(zobjlist, MainForm.Clamp(animrotvaloffset + 2 * (Helpers.Read16(zobjlist, (int)(animrotindexoffset + 6 + 6 * counter))), 0, zobjlist.Count - 2));
+                            limb.rotation.Y = Helpers.Read16(zobjlist, MainForm.Clamp(animrotvaloffset + 2 * (Helpers.Read16(zobjlist, (int)(animrotindexoffset + 8 + 6 * counter))),0,zobjlist.Count-2));
+                            limb.rotation.Z = Helpers.Read16(zobjlist, MainForm.Clamp(animrotvaloffset + 2 * (Helpers.Read16(zobjlist, (int)(animrotindexoffset + 10 + 6 * counter))), 0, zobjlist.Count - 2));
+                            limb.parent = -1;
+
+                            if ((uint)Helpers.Read24S(zobjlist, limboffset + 9) != 0x000000) //if limb has dlist
+                            {
+                                int target = counter;
+                                while (true)
+                                {
+                                    target = objrender.Limbs.FindIndex(x => ((Limb)x).firstchild == target);
+                                    if (target == -1) break;
+                                    prevlimb[0] += objrender.Limbs[target].x;
+                                    prevlimb[1] += objrender.Limbs[target].y;
+                                    prevlimb[2] += objrender.Limbs[target].z;
+                                    break;
+                                }
+
+                                UcodeSimulator.limbtransformations.Add(new short[] { (short) (limb.x + prevlimb[0]), (short)(limb.y + prevlimb[1]), (short)(limb.z + prevlimb[2]) });
+                                prevlimb = new short[] { 0, 0, 0 };
+
+                                SayakaGL.UcodeSimulator.ReadDL((int) bank, Helpers.Read32(zobjlist, limboffset + 8), ref limb.DList);
+
+                                SayakaGL.UcodeSimulator.ParseAllDLs(ref limb.DList);
+
+                            }
+                            else
+                            {
+                            //    prevlimb[0] += limb.x;
+                            //     prevlimb[1] += limb.y;
+                            //    prevlimb[2] += limb.z;
+                            }
+
+                            objrender.Limbs.Add(limb);
+
+                            offset += 4;
+
+                            counter++;
+
+                        }
+
+                        for (int b = 0; b < objrender.Limbs.Count; b++)
+                        {
+                            if (objrender.Limbs[b].firstchild != -1)
+                            {
+                                Limb tmplimb = objrender.Limbs[objrender.Limbs[b].firstchild];
+                                tmplimb.parent = (sbyte)b;
+                                objrender.Limbs[objrender.Limbs[b].firstchild] = tmplimb;
+                            }
+                            if (objrender.Limbs[b].nextchild != -1)
+                            {
+                                Limb tmplimb = objrender.Limbs[objrender.Limbs[b].nextchild];
+                                tmplimb.parent = (sbyte)b;
+                                objrender.Limbs[objrender.Limbs[b].nextchild] = tmplimb;
+                            }
+                        }
+
+                        MainForm.zobj_cache.Add(objrender);
+
+                        UcodeSimulator.limbtransformations.Clear();
+                        UcodeSimulator.limbID = -1;
+                    }
+                }
+            }
+
+
+            if (!animated)
+            {
+                if (offsets.Length == 0)
+                    while (dlistcount > 0)
+                    {
+
+                        // DebugConsole.WriteLine("offset: " + offset.ToString("X"));
+                        offset = SayakaGL.UcodeSimulator.ReadDL((int) bank, offset, ref objrender.DLists);
+
+                        foreach (SayakaGL.UcodeSimulator.DisplayListStruct DL in objrender.DLists)
+                        {
+                            SayakaGL.UcodeSimulator.ParseDL(DL);
+            
+                        }
+                        dlistcount -= 1;
+                    
+                    }
+                else
+                    for (int i = 0; i < offsets.Length; i++)
+                    {
+
+                        // DebugConsole.WriteLine("offset: " + offset.ToString("X"));
+                        SayakaGL.UcodeSimulator.ReadDL((int)bank, offsets[i], ref objrender.DLists);
+
+                        foreach (SayakaGL.UcodeSimulator.DisplayListStruct DL in objrender.DLists)
+                        {
+                            SayakaGL.UcodeSimulator.ParseDL(DL);
+
+                        }
+
+                    }
+                SayakaGL.UcodeSimulator.ParseAllDLs(ref objrender.DLists);
+
+                MainForm.zobj_cache.Add(objrender);
+            }
+        }
+
+        private void InferMissingActorPreviews()
+        {
+            HashSet<ushort> registered = new HashSet<ushort>();
+            foreach (ZObjRender render in MainForm.zobj_cache) registered.Add(render.actor);
+            HashSet<ushort> sceneActors = new HashSet<ushort>();
+            foreach (ZRoom room in _Rooms)
+                foreach (ZActor actor in room.ZActors) sceneActors.Add(actor.Number);
+            foreach (ZActor actor in Transitions) sceneActors.Add(actor.Number);
+            foreach (ZActor actor in SpawnPoints) sceneActors.Add(actor.Number);
+            Dictionary<string, IList<uint>> candidates = new Dictionary<string, IList<uint>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (KeyValuePair<ushort, ActorInfo> entry in MainForm.ActorCache)
+            {
+                if (!sceneActors.Contains(entry.Key) || registered.Contains(entry.Key) || entry.Value == null || string.IsNullOrWhiteSpace(entry.Value.objects)) continue;
+                foreach (string token in entry.Value.objects.Split(','))
+                {
+                    ushort objectId;
+                    if (!ushort.TryParse(token.Trim(), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out objectId)) continue;
+                    string requested = objectId == 1 ? "gameplay_keep" :
+                        (objectId == 2 ? "gameplay_field_keep" :
+                        (objectId == 3 ? "gameplay_dangeon_keep" : objectId.ToString("X4")));
+                    string file = RomObjectResolver.Resolve(ArcharinaWorkspace.ActiveObjectDirectory, requested);
+                    if (file == null) continue;
+                    IList<uint> offsets;
+                    if (!candidates.TryGetValue(file, out offsets))
+                    {
+                        offsets = ActorPreviewInference.FindCandidates(File.ReadAllBytes(file), 1);
+                        candidates.Add(file, offsets);
+                    }
+                    if (offsets.Count == 0) continue;
+                    uint bank = objectId == 1 ? 0x04u : (objectId == 2 || objectId == 3 ? 0x05u : 0x06u);
+                    try
+                    {
+                        RegisterActorPreview(entry.Key, offsets[0], new string[0], new string[0],
+                            0.01f, 1, false, 1, "....", 0, 0, bank,
+                            new string[0], 0, "", new float[0], 0, "", new string[0][], new string[0][],
+                            0, new[] { false, false, false }, 1, file);
+                        registered.Add(entry.Key);
+                        PreviewDiagnostics.Add(string.Format("Inferred actor preview: {0:X4} from {1}", entry.Key, Path.GetFileName(file)));
+                    }
+                    catch (Exception error)
+                    {
+                        PreviewDiagnostics.Add(string.Format("Actor preview inference failed: {0:X4} ({1})", entry.Key, error.Message));
+                    }
+                    break;
+                }
+            }
+        }
+
+        private void LoadActorPreviewOverrides()
+        {
+            ActorPreviewOverrideFile overrides = ActorPreviewOverrideFile.Load(
+                Path.Combine(ArcharinaWorkspace.PrivatePath, "actor-preview-overrides.xml"), PreviewDiagnostics);
+            foreach (ActorPreviewOverride entry in overrides.Actors)
+            {
+                ushort actor; uint offset, bank; float scale; int dlistCount;
+                if (!entry.TryRead(out actor, out offset, out bank, out scale, out dlistCount))
+                {
+                    PreviewDiagnostics.Add("Invalid actor preview override for actor " + entry.Actor);
+                    continue;
+                }
+                if (MainForm.zobj_cache.Exists(x => x.actor == actor)) continue;
+                string file = RomObjectResolver.Resolve(ArcharinaWorkspace.ActiveObjectDirectory, entry.Object);
+                if (file == null)
+                {
+                    PreviewDiagnostics.Add("Missing override object " + entry.Object + " for actor " + entry.Actor);
+                    continue;
+                }
+                try
+                {
+                    RegisterActorPreview(actor, offset, new string[0], new string[0], scale, (uint)dlistCount,
+                        false, 1, string.IsNullOrWhiteSpace(entry.Variable) ? "...." : entry.Variable,
+                        0, 0, bank, new string[0], 0, "", new float[0], 0, "", new string[0][], new string[0][] ,
+                        0, new[] { false, false, false }, 1, file);
+                    PreviewDiagnostics.Add(string.Format("Loaded actor preview override: {0:X4}", actor));
+                }
+                catch (Exception error)
+                {
+                    PreviewDiagnostics.Add(string.Format("Actor preview override failed: {0:X4} ({1})", actor, error.Message));
+                }
+            }
+        }
+
+        private string WriteCapturedRoomObj(int roomIndex, List<SayakaGL.UcodeSimulator.CapturedTriangle> triangles)
+        {
+            string basePath = string.IsNullOrEmpty(BasePath) ? AppDomain.CurrentDomain.BaseDirectory : BasePath;
+            string importPath = ArcharinaWorkspace.ImportPath;
+            Directory.CreateDirectory(importPath);
+            string objPath = Path.Combine(importPath, "Room_" + roomIndex + "_editable.obj");
+            string mtlName = Path.GetFileNameWithoutExtension(objPath) + ".mtl";
+            string texturePath = Path.Combine(importPath, "RoomTextures");
+            Directory.CreateDirectory(texturePath);
+
+            foreach (SayakaGL.UcodeSimulator.CapturedTriangle triangle in triangles)
+            {
+                if (!string.IsNullOrEmpty(triangle.TextureKey) && SayakaGL.UcodeSimulator.CapturedTextures.ContainsKey(triangle.TextureKey))
+                    WriteCapturedTexture(texturePath, triangle.TextureKey, SayakaGL.UcodeSimulator.CapturedTextures[triangle.TextureKey]);
+            }
+
+            using (StreamWriter writer = new StreamWriter(objPath, false, Encoding.UTF8))
+            {
+                writer.WriteLine("# Decoded from OoT N64 display lists by SharpOcarina");
+                writer.WriteLine("mtllib " + mtlName);
+
+                foreach (SayakaGL.UcodeSimulator.CapturedTriangle triangle in triangles)
+                    foreach (Vector3d position in triangle.Positions)
+                        writer.WriteLine(string.Format(CultureInfo.InvariantCulture, "v {0} {1} {2}", position.X, position.Y, position.Z));
+
+                foreach (SayakaGL.UcodeSimulator.CapturedTriangle triangle in triangles)
+                    foreach (Vector2d texCoord in triangle.TexCoords)
+                        // ObjFile converts OBJ V coordinates into its internal
+                        // OpenGL convention, so compensate once here instead
+                        // of applying the vertical flip twice on reload.
+                        writer.WriteLine(string.Format(CultureInfo.InvariantCulture, "vt {0} {1}", texCoord.X, 1.0 - texCoord.Y));
+
+                foreach (SayakaGL.UcodeSimulator.CapturedTriangle triangle in triangles)
+                    foreach (Vector3d normal in triangle.Normals)
+                        writer.WriteLine(string.Format(CultureInfo.InvariantCulture, "vn {0} {1} {2}", normal.X, normal.Y, normal.Z));
+
+                // Preserve the N64 vertex shade/alpha captured from the
+                // original display list.  Geometry-only OBJ output used to
+                // drop this table, so rebuilding the room display list after
+                // an edit changed the source colours even when the texture
+                // and UV data were untouched.
+                foreach (SayakaGL.UcodeSimulator.CapturedTriangle triangle in triangles)
+                {
+                    for (int corner = 0; corner < 3; corner++)
+                    {
+                        OpenTK.Graphics.Color4 color = triangle.Colors != null && corner < triangle.Colors.Length
+                            ? triangle.Colors[corner]
+                            : new OpenTK.Graphics.Color4(1.0f, 1.0f, 1.0f, 1.0f);
+                        writer.WriteLine(string.Format(CultureInfo.InvariantCulture, "vc {0} {1} {2} {3}",
+                            color.R, color.G, color.B, color.A));
+                    }
+                }
+
+                writer.WriteLine("g Room" + roomIndex);
+                for (int i = 0; i < triangles.Count; i++)
+                {
+                    int vertex = i * 3 + 1;
+                    writer.WriteLine("usemtl Mat_" + GetCapturedMaterialName(triangles[i]));
+                    writer.WriteLine("f " + vertex + "/" + vertex + "/" + vertex + " "
+                        + (vertex + 1) + "/" + (vertex + 1) + "/" + (vertex + 1) + " "
+                        + (vertex + 2) + "/" + (vertex + 2) + "/" + (vertex + 2));
+                    writer.WriteLine("fc " + (i * 3) + " " + (i * 3 + 1) + " " + (i * 3 + 2));
+                }
+            }
+
+            Dictionary<string, OpenTK.Graphics.Color4> materials = new Dictionary<string, OpenTK.Graphics.Color4>();
+            Dictionary<string, string> materialTextures = new Dictionary<string, string>();
+            foreach (SayakaGL.UcodeSimulator.CapturedTriangle triangle in triangles)
+            {
+                string name = GetCapturedMaterialName(triangle);
+                if (!materials.ContainsKey(name)) materials.Add(name, GetCapturedMaterialColor(triangle));
+                if (!materialTextures.ContainsKey(name) && !string.IsNullOrEmpty(triangle.TextureKey) &&
+                    SayakaGL.UcodeSimulator.CapturedTextures.ContainsKey(triangle.TextureKey))
+                    materialTextures.Add(name, "RoomTextures/" + GetCapturedTextureFilename(triangle.TextureKey));
+            }
+
+            using (StreamWriter materialWriter = new StreamWriter(Path.Combine(importPath, mtlName), false, Encoding.UTF8))
+            {
+                foreach (KeyValuePair<string, OpenTK.Graphics.Color4> material in materials)
+                {
+                    materialWriter.WriteLine("newmtl Mat_" + material.Key);
+                    materialWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "Kd {0} {1} {2}",
+                        material.Value.R, material.Value.G, material.Value.B));
+                    // Preserve alpha from the PNG itself. Averaging vertex alpha
+                    // into the MTL global opacity made transparent cards turn
+                    // opaque or vanish depending on the triangle colors.
+                    materialWriter.WriteLine("d 1.0");
+                    materialWriter.WriteLine("illum 1");
+                    string textureFile;
+                    if (materialTextures.TryGetValue(material.Key, out textureFile))
+                        materialWriter.WriteLine("map_Kd " + textureFile);
+                }
+            }
+            return objPath;
+        }
+
+        private static string GetCapturedTextureFilename(string textureKey)
+        {
+            return "N64Tex_" + textureKey + ".png";
+        }
+
+        private static void WriteCapturedTexture(string texturePath, string textureKey, byte[] rgba)
+        {
+            string filename = Path.Combine(texturePath, GetCapturedTextureFilename(textureKey));
+
+            string[] parts = textureKey.Split('_');
+            if (parts.Length < 3) return;
+            string[] dimensions = parts[2].Split('x');
+            int width, height;
+            if (!Int32.TryParse(dimensions[0], out width) || !Int32.TryParse(dimensions[1], out height) || width <= 0 || height <= 0)
+                return;
+            if (rgba == null || rgba.Length < width * height * 4) return;
+
+            using (Bitmap bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+            {
+                for (int y = 0; y < height; y++)
+                    for (int x = 0; x < width; x++)
+                    {
+                        int offset = (y * width + x) * 4;
+                        bitmap.SetPixel(x, y, Color.FromArgb(rgba[offset + 3], rgba[offset], rgba[offset + 1], rgba[offset + 2]));
+                    }
+                bitmap.Save(filename, ImageFormat.Png);
+            }
+        }
+
+        private static OpenTK.Graphics.Color4 GetCapturedMaterialColor(SayakaGL.UcodeSimulator.CapturedTriangle triangle)
+        {
+            if (triangle.Colors == null || triangle.Colors.Length == 0) return new OpenTK.Graphics.Color4(0.8f, 0.8f, 0.8f, 1.0f);
+            float r = 0, g = 0, b = 0, a = 0;
+            foreach (OpenTK.Graphics.Color4 color in triangle.Colors)
+            {
+                r += color.R;
+                g += color.G;
+                b += color.B;
+                a += color.A;
+            }
+            float count = triangle.Colors.Length;
+            return new OpenTK.Graphics.Color4(r / count, g / count, b / count, a / count);
+        }
+
+        private static string GetCapturedMaterialName(SayakaGL.UcodeSimulator.CapturedTriangle triangle)
+        {
+            OpenTK.Graphics.Color4 color = GetCapturedMaterialColor(triangle);
+            string name = ((int)(color.R * 255.0f)).ToString("X2") + ((int)(color.G * 255.0f)).ToString("X2") + ((int)(color.B * 255.0f)).ToString("X2") + ((int)(color.A * 255.0f)).ToString("X2");
+            return name + (string.IsNullOrEmpty(triangle.TextureKey) ? "" : "_TX" + triangle.TextureKey);
+        }
+
+        public void ConvertPreview(bool ConsecutiveRoomInject, bool ForceRGBATextures)
+        {
+
+            // Get the GameHandler stub and UcodeSimulator all ready
+            SayakaGL.GameHandler.Initialize();
+            SayakaGL.UcodeSimulator.Initialize(SayakaGL.Ucodes.F3DEX2);
+            // Actor previews are global, while scenes are not. A previous
+            // imported/ROM scene must not prevent this scene's OoT preview
+            // records from being registered.
+            MainForm.zobj_cache.Clear();
+
+            string game = (!MainForm.settings.MajorasMask) ? "OOT" : "MM";
+
+            if (1 == 1)
+            {
+                MainForm.n64preview = true;
+
+                if (ColModel != null)
+                {
+                    if (cloneid > 0) { MainForm.NormalHeader.ConvertPreview(ConsecutiveRoomInject, ForceRGBATextures); return; }
+                    else
+                    {
+                        ConvertScene(ConsecutiveRoomInject, ForceRGBATextures, this, game);
+                        RebuildEditedRoomNativePreview();
+                    }
+                }
+                else return;
+            }
+
+            // Alright, convert the scene
+            GL.PushAttrib(AttribMask.AllAttribBits);
+
+            // Load the converted scene data into dummy memory
+            if (OriginalSceneData != null && OriginalSceneData.Count != 0)
+            {
+                SayakaGL.GameHandler.LoadToRAM(MainForm.NormalHeader.OriginalSceneData.ToArray(), 0x02);
+            }
+            else
+            {
+                if (MainForm.NormalHeader.SceneData != null) SayakaGL.GameHandler.LoadToRAM(MainForm.NormalHeader.SceneData.ToArray(), 0x02);
+            }
+
+            // Go through the rooms...
+            SayakaGL.UcodeSimulator.BeginTextureCapture();
+            for (int i = 0; i < _Rooms.Count; i++)
+            {
+                // Make a DList list for the UcodeSimulator for each
+                _Rooms[i].N64DLists = new List<SayakaGL.UcodeSimulator.DisplayListStruct>();
+                // Room segments are replaced on every iteration. Give each room
+                // its own cache namespace so reused N64 addresses cannot borrow
+                // a texture captured from a previous room.
+                SayakaGL.UcodeSimulator.currentfilename = "Room" + i.ToString();
+                SayakaGL.UcodeSimulator.TextureCache.Clear();
+
+                // Load the room data into dummy memory
+
+                List<uint> DLOffsets;
+
+                
+
+                if (_Rooms[i].OriginalRoomData != null && _Rooms[i].OriginalRoomData.Count != 0)
+                {
+                    SayakaGL.GameHandler.LoadToRAM(_Rooms[i].OriginalRoomData.ToArray(), 0x03);
+                    DLOffsets = SayakaGL.GameHandler.GetDisplayLists((uint)(_Rooms[i].OriginalMeshHeaderOffset | (0x03 << 24)));
+
+                }
+                else
+                {
+                    SayakaGL.GameHandler.LoadToRAM(_Rooms[i].RoomData.ToArray(), 0x03);
+                    DLOffsets = SayakaGL.GameHandler.GetDisplayLists((uint)(_Rooms[i].MeshHeaderOffset | (0x03 << 24)));
+                }
+
+
+                // Get the Display Lists offsets back from the mesh header and read each DList
+                SayakaGL.UcodeSimulator.BeginGeometryCapture();
+
+                foreach (UInt32 DL in DLOffsets)
+                {
+                    SayakaGL.UcodeSimulator.ReadDL(0, DL, ref _Rooms[i].N64DLists);
+                }
+                // Finally parse all the DLists
+                SayakaGL.UcodeSimulator.ParseAllDLs(ref _Rooms[i].N64DLists);
+
+                if (PregeneratedMesh)
+                {
+                    List<SayakaGL.UcodeSimulator.CapturedTriangle> triangles = SayakaGL.UcodeSimulator.EndGeometryCapture();
+                    if (triangles.Count > 0)
+                    {
+                        string modelPath = WriteCapturedRoomObj(i, triangles);
+                        _Rooms[i].ModelFilename = modelPath;
+                        _Rooms[i].ModelShortFilename = Path.GetFileNameWithoutExtension(modelPath);
+                        _Rooms[i].ObjModel = new ObjFile(modelPath);
+                        _Rooms[i].TrueGroups = _Rooms[i].ObjModel.Groups;
+                        _Rooms[i].ObjModel.BasePath = Path.GetDirectoryName(modelPath) + Path.DirectorySeparatorChar;
+                        // Captured OoT room geometry includes billboard-style
+                        // planes such as fences, foliage, and mountain cards.
+                        foreach (ObjFile.Group group in _Rooms[i].TrueGroups)
+                            group.BackfaceCulling = false;
+                        _Rooms[i].ObjModel.Prepare(_Rooms[i].TrueGroups);
+                    }
+                }
+                else
+                {
+                    SayakaGL.UcodeSimulator.EndGeometryCapture();
+                }
+
+
+            }
+
+            if (PregeneratedMesh && _Rooms.Count > 0 && _Rooms.All(room => room.ObjModel != null && room.ObjModel.Vertices.Count > 0))
+                PregeneratedMesh = false;
+
+            string[] skyboxfiles = { "skybox01.zobj", "skybox01cloudy.zobj", "skybox05.zobj", "skybox01MM.zobj" };
+            uint[] skyboxoffsets = { 0x06017400, 0x06017020, 0x0601B380, 0x06010B40 };
+
+            for (int i = 0; i < skyboxfiles.Length; i++)
+            {
+
+                if (MainForm.skyboxdlists[i].Count == 0)
+                {
+
+                    string skyboxPath = RomObjectResolver.Resolve(ArcharinaWorkspace.ActiveObjectDirectory, skyboxfiles[i]);
+                    if (skyboxPath == null)
+                    {
+                        PreviewDiagnostics.Add("Missing skybox object: " + skyboxfiles[i]);
+                        continue;
+                    }
+                    List<byte> skybox = new List<byte>(File.ReadAllBytes(skyboxPath));
+
+                    UcodeSimulator.currentfilename = skyboxfiles[i];
+
+                    SayakaGL.GameHandler.LoadToRAM(skybox.ToArray(), 0x06);
+
+                    List<UcodeSimulator.DisplayListStruct> templist = new List<UcodeSimulator.DisplayListStruct>();
+
+                    uint asd = SayakaGL.UcodeSimulator.ReadDL((int)0x06, skyboxoffsets[i], ref templist);
+
+                    foreach (SayakaGL.UcodeSimulator.DisplayListStruct DL in templist)
+                    {
+                        SayakaGL.UcodeSimulator.ParseDL(DL);
+                    }
+
+                    SayakaGL.UcodeSimulator.ParseAllDLs(ref templist);
+
+                    MainForm.skyboxdlists[i] = templist;
+
+                    UcodeSimulator.currentfilename = "";
+                }
+            }
+            
+
+
+            // The ROM/TOML actor database is only a partial replacement for the
+            // legacy preview table.  It may register Link or a few doors first,
+            // but must not prevent the XML definitions for scenery, props, and
+            // NPCs from being loaded as well.
+            if (MainForm.settings.RenderActors)
+            {
+                string gameprefix = (!MainForm.settings.MajorasMask) ? "OOT/" : "MM/";
+
+                XmlNodeList nodes = XMLreader.getXMLNodes("ActorRendering", "Actor");
+                List<uint> z64romActors = new List<uint>();
+
+                if (rom64.isSet())
+                {
+                    List<String> actors = rom64.getList("src\\actor");
+
+                    foreach(var str in actors)
+                    {
+                        string basename = "";
+                        ushort index = 0;
+
+                        if (!rom64.getNameAndIndex(str, ref basename, ref index))
+                            continue;
+                        
+                        var rompath = str.Replace("\\src\\", "\\rom\\");
+                        uint objectid = rom64.getActorObjID(rompath);
+
+                        if (File.Exists(str + "\\actor.toml")) {
+                            TomlTable toml = rom64.parseToml(str + "\\actor.toml");
+
+                            if (toml.HasKey("Render")){
+                                TomlArray arr = toml["Render"].AsArray;
+                                foreach (TomlNode node in arr.RawArray) {
+                                    UInt16 key = index;
+                                    float scale = node.HasKey("Scale") ? node["Scale"].AsFloat : 0.01f;
+                                    bool animated = node.HasKey("Animation") ? true : false;
+                                    UInt16 animation = (ushort)( node.HasKey("Animation") ? node["Animation"].AsInteger.Value : 0 );
+                                    short yoff = (short)( node.HasKey("YOffset") ? node["YOffset"].AsInteger.Value : 0 );
+                                    string var = node.HasKey("Regex") ? node["Regex"].AsString : "....";
+                                    ushort bank = (ushort)( node.HasKey("Segment") ? node["Segment"].AsInteger.Value : 6 );
+                                    if (node.HasKey("Object")) objectid = (uint)node["Object"].AsInteger.Value;
+                                    string file = rom64.getItem("rom\\object", (int)objectid);
+                                    if (file == "") file = rom64.getItem("rom\\object\\.vanilla", (int)objectid);
+                                    string dl = node.HasKey("DisplayList") ? node["DisplayList"].AsString.ToString() : "";
+                                    short roty = (short)(node.HasKey("RotY") ? node["RotY"].AsInteger.Value : 0);
+                                    int hierarchy = (int)(node.HasKey("Hierarchy") ? node["Hierarchy"].AsInteger.Value : 1);
+                                    string[] textureoffsets = new string[0];
+                                    string[] env = null;
+                                    string[] prim = null;
+                                    bool[] ignorerot = {false,false,false};
+                                    uint offset = 0;
+                                    ushort scalemask = 0;
+                                    string scaletarget = "";
+                                    float[] scalearray = new float[0];
+                                    ushort colormask = 0;
+                                    string colortarget = "";
+                                    string[][] envcolorarray = new string[0][];
+                                    string[][] primcolorarray = new string[0][];
+                                    uint collision = 1;
+                                    uint dlistcount = 1;
+                                    string[] offsets = new string[0];
+                                    string col = node.HasKey("Collision") ? node["Collision"].AsString.ToString() : "";
+                                    //string[] dlistarray = null;
+
+
+
+                                    if (node.HasKey("EnvColor")) {
+                                        TomlArray intarr = node["EnvColor"].AsArray;
+
+                                        int off = 0;
+                                        env = new string[4];
+                                        foreach(TomlInteger integer in intarr)
+                                            env[off++] = integer.ToString();
+                                    }
+
+                                    if (node.HasKey("PrimColor")) {
+                                        TomlArray intarr = node["PrimColor"].AsArray;
+
+                                        int off = 0;
+                                        prim = new string[4];
+                                        foreach(TomlInteger integer in intarr)
+                                            prim[off++] = integer.ToString();
+                                    }
+
+                                    string[] color = new string[0];
+
+                                    if (env != null && prim != null) {
+                                        color = new string[8];
+                                        env.CopyTo(color, 0);
+                                        prim.CopyTo(color, 4);
+                                    } else if (env != null) {
+                                        color = new string[4];
+                                        env.CopyTo(color, 0);
+                                    }
+
+                                    if (node.HasKey("TextureOffsets"))
+                                    {
+
+
+                                        TomlArray tmp = node["TextureOffsets"].AsArray;
+                                        textureoffsets = new string[tmp.ChildrenCount];
+                                        string object_ld = rom64.openFile("include\\z_object_user.ld");
+
+
+                                        for (int i = 0; i < tmp.ChildrenCount; i++)
+                                        {
+                                            if (tmp[i].AsString.ToString().Substring2(0, 2) == "0x")
+                                            {
+                                                textureoffsets[i] = tmp[i].AsString;
+                                                textureoffsets[i].Replace("0x", "");
+                                            }
+                                            else
+                                            {
+                                                Match match = Regex.Match(object_ld, tmp[i].AsString + "[^=]*=[^0]*(0x[0-9a-fA-F]*)");
+                                                if (match.Value != "")
+                                                    textureoffsets[i] = match.Groups[1].Value.ToString();
+                                            }
+                                        }
+                                    }
+
+                                    if (node.HasKey("IgnoreRotation"))
+                                    {
+
+                                        TomlArray tmp = node["IgnoreRotation"].AsArray;
+
+                                        for (int i = 0; i < tmp.ChildrenCount && i <= 2; i++)
+                                        {
+                                            ignorerot[i] = tmp[i].AsInteger.Value == 1;
+                                        }
+                                    }
+
+                                    if (node.HasKey("ScaleMask"))
+                                    {
+                                        scalemask = (ushort)node["ScaleMask"].AsInteger.Value;
+                                        scaletarget = node["ScaleTarget"].AsString.ToString();
+                                        TomlArray tmp = node["ScaleArray"].AsArray;
+                                        scalearray = new float[tmp.ChildrenCount];
+                                        for (int i = 0; i < tmp.ChildrenCount; i++)
+                                        {
+                                            scalearray[i] = tmp[i].AsFloat;
+                                        }
+                                    }
+
+                                    if (node.HasKey("ColorMask"))
+                                    {
+                                        colormask = (ushort)node["ColorMask"].AsInteger.Value;
+                                        colortarget = node["ColorTarget"].AsString.ToString();
+                                        TomlArray tmp;
+                                        if (node.HasKey("EnvColorArray"))
+                                        {
+                                            tmp = node["EnvColorArray"].AsArray;
+                                            envcolorarray = new string[tmp.ChildrenCount][];
+                                            for (int i = 0; i < tmp.ChildrenCount; i++)
+                                            {
+
+                                                TomlArray intarr = tmp[i].AsArray;
+
+                                                int off = 0;
+                                                env = new string[4];
+                                                foreach (TomlInteger integer in intarr)
+                                                    env[off++] = integer.ToString();
+
+                                                if (env != null)
+                                                {
+                                                    envcolorarray[i] = new string[4];
+                                                    env.CopyTo(envcolorarray[i], 0);
+                                                }
+
+                                            }
+                                        }
+                                        if (node.HasKey("PrimColorArray"))
+                                        {
+                                            tmp = node["PrimColorArray"].AsArray;
+                                            primcolorarray = new string[tmp.ChildrenCount][];
+                                            for (int i = 0; i < tmp.ChildrenCount; i++)
+                                            {
+
+                                                TomlArray intarr = tmp[i].AsArray;
+
+                                                int off = 0;
+                                                env = new string[4];
+                                                foreach (TomlInteger integer in intarr)
+                                                    env[off++] = integer.ToString();
+
+                                                if (env != null)
+                                                {
+                                                    primcolorarray[i] = new string[4];
+                                                    env.CopyTo(primcolorarray[i], 0);
+                                                }
+
+                                            }
+                                        }
+                                    }
+
+
+                                    z64romActors.Add((uint)index);
+
+
+
+                                    if (dl != "") {
+                                        string[] splitarray = dl.Split(',');
+                                        foreach (string dls in splitarray)
+                                        {
+                                            if (dls.Substring2(0, 2) == "0x")
+                                            {
+                                                offset = Convert.ToUInt32(dls.ToString(), 16);
+                                            }
+                                            else
+                                            {
+                                                string object_ld = rom64.openFile("include\\z_object_user.ld");
+
+                                                Match match = Regex.Match(object_ld, dls + "[^=]*=[^0]*(0x[0-9a-fA-F]*)");
+                                                if (match.Value != "")
+                                                    offset = Convert.ToUInt32(match.Groups[1].Value.ToString(), 16);
+                                            }
+                                            if (splitarray.Length > 1)
+                                            {
+                                                List<string> tmplist = offsets.ToList();
+                                                tmplist.Add(offset.ToString("X8"));
+                                                offsets = tmplist.ToArray();
+                                                offset = 0;
+                                            }
+                                        }
+                                    }
+
+
+                                    if (col != "")
+                                    {
+
+                                        if (col.Substring2(0, 2) == "0x")
+                                        {
+                                            collision = Convert.ToUInt32(col.ToString(), 16);
+                                        }
+                                        else
+                                        {
+                                            string object_ld = rom64.openFile("include\\z_object_user.ld");
+
+                                            Match match = Regex.Match(object_ld, col + "[^=]*=[^0]*(0x[0-9a-fA-F]*)");
+                                            if (match.Value != "")
+                                                collision = Convert.ToUInt32(match.Groups[1].Value.ToString(), 16);
+                                        }
+                                    }
+
+                                    if (file != "" && (offset != 0 || animated || offsets.Length > 0)) {
+                                        /*
+                                        DebugConsole.WriteLine("Register Actor Preview: " + file);
+                                        DebugConsole.WriteLine("key:    " + index.ToString("X04"));
+                                        DebugConsole.WriteLine("scale:  " + scale);
+                                        DebugConsole.WriteLine("yoff:   " + yoff);
+                                        DebugConsole.WriteLine("var:    " + var);
+                                        DebugConsole.WriteLine("offset: " + offset.ToString("X08"));
+                                        DebugConsole.WriteLine("bank:   " + bank.ToString("X02"));
+                                        DebugConsole.WriteLine("textureoffsets:   " + textureoffsets.ToString());
+                                        */
+
+                                        
+                                        RegisterActorPreview(
+                                            key, offset, offsets, textureoffsets,
+                                            scale, dlistcount, animated, 
+                                            hierarchy, var, animation, 
+                                            yoff, bank, color, scalemask, scaletarget, scalearray, colormask, colortarget, envcolorarray, primcolorarray, roty, ignorerot, collision, file);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                foreach (XmlNode node in nodes)
+                {
+                    XmlAttributeCollection nodeAtt = node.Attributes;
+
+                    UInt16 key = (ushort) ((nodeAtt["Key"] != null) ? Convert.ToUInt16(nodeAtt["Key"].Value,16) : 0x00);
+                    string var = (nodeAtt["Var"] != null) ? Convert.ToString(nodeAtt["Var"].Value) : "....";
+                    bool skip = false;
+
+                    // TOML definitions can cover only some variable variants of
+                    // an actor.  Skip an XML entry only when a registered preview
+                    // already matches this exact actor and variable pattern;
+                    // otherwise keep the legacy scenery/NPC fallback available.
+                    foreach (ZObjRender registered in MainForm.zobj_cache)
+                    {
+                        if (registered.actor != key)
+                            continue;
+
+                        if (registered.variableregex == var)
+                        {
+                            skip = true;
+                            break;
+                        }
+                    }
+
+                    if (skip) continue;
+
+                    UInt32 offset = (nodeAtt["Offset"] != null) ? Convert.ToUInt32(nodeAtt["Offset"].Value, 16) : 0x00;
+                    string[] offsetsstr = (nodeAtt["Offsets"] != null) ? (nodeAtt["Offsets"].Value.Split(',')) : new string[0];
+                    string[] textureoffsetsstr = (nodeAtt["TextureOffsets"] != null) ? (nodeAtt["TextureOffsets"].Value.Split(',')) : new string[0];
+                    float scale = (nodeAtt["Scale"] != null) ? XmlConvert.ToSingle(nodeAtt["Scale"].Value) : 1.0f;
+                    UInt32 dlistcount = (nodeAtt["DListCount"] != null) ? Convert.ToUInt32(nodeAtt["DListCount"].Value) : 1;
+                    bool animated = (nodeAtt["Animated"] != null);
+                    int hierarchy = (nodeAtt["Hierarchy"] != null) ? Convert.ToInt32(nodeAtt["Hierarchy"].Value) : 1;
+                    UInt16 animation = (ushort) ((nodeAtt["Animation"] != null) ? Convert.ToUInt16(nodeAtt["Animation"].Value) : 0);
+                    short Yoff = (short)((nodeAtt["Yoff"] != null) ? Convert.ToInt16(nodeAtt["Yoff"].Value) : 0);
+                    short roty = (short)((nodeAtt["RotY"] != null) ? Convert.ToInt16(nodeAtt["RotY"].Value) : 0);
+                    string[] colors = (nodeAtt["Colors"] != null) ? (nodeAtt["Colors"].Value.Split(',')) : new string[0];
+                    ushort scalemask = 0;
+                    string scaletarget = "";
+                    float[] scalearray = new float[0];
+                    bool[] ignorerot = {false,false,false};
+                    UInt32 collision = (nodeAtt["Collision"] != null) ? Convert.ToUInt32(nodeAtt["Collision"].Value, 16) : 1;
+
+                    if (nodeAtt["ScaleMask"] != null)
+                    {
+                        scalemask = Convert.ToUInt16(nodeAtt["ScaleMask"].Value, 16);
+                        scaletarget = nodeAtt["ScaleTarget"].Value;
+                        string[] tmp = nodeAtt["ScaleArray"].Value.Split(',');
+                        scalearray = new float[tmp.Length];
+                        for(int i = 0; i < tmp.Length; i++)
+                        {
+                            scalearray[i] = XmlConvert.ToSingle(tmp[i]);
+                        }
+                    }
+                    if (nodeAtt["IgnoreRotation"] != null)
+                    {
+                        string[] tmp = nodeAtt["IgnoreRotation"].Value.Split(',');
+
+                        for (int i = 0; i < tmp.Length; i++)
+                        {
+                            ignorerot[i] = Convert.ToInt32(tmp[i]) == 1;
+                        }
+                    }
+                    uint bank;
+                    string objectName = node.InnerText == null ? "" : node.InnerText.Trim();
+                    string file = RomObjectResolver.Resolve(ArcharinaWorkspace.ActiveObjectDirectory, objectName);
+                    if (file == null)
+                    {
+                        PreviewDiagnostics.Add(string.Format("Missing actor preview object: {0} for actor {1:X4} var {2}", objectName, key, var));
+                        continue;
+                    }
+
+                    if (node.InnerText == "gameplay_keep") bank = 0x04;
+                    else if (node.InnerText == "gameplay_field_keep" || node.InnerText == "gameplay_dangeon_keep") bank = 0x05;
+                    else bank = 0x06;
+
+
+                    //if (key != 0x0090 || var != "..[^8F].") continue; //test 
+
+
+                    RegisterActorPreview(
+                        key, offset, offsetsstr, textureoffsetsstr,
+                        scale, dlistcount, animated,
+                        hierarchy, var, animation,
+                        Yoff, bank, colors, scalemask,scaletarget,scalearray, 0, "", new string[0][], new string[0][], roty, ignorerot, collision, file);
+                    /*
+                    if (MainForm.tomlconversionID != 0)
+                    {
+                        MainForm.tomlconversionID = 0;
+
+                        string clipboard = "";
+                        MainForm.
+                        string name = nodeAtt["Name"].Value;
+                        int category = ((nodeAtt["Category"] != null) ? Convert.ToInt32(nodeAtt["Category"].Value) : 0);
+
+                        clipboard += "Name = \"{name}\"\n" +
+                                     "Category = \"{category}\"\n" +
+                                     "Version = 1";
+
+                        Clipboard.SetText(clipboard);
+                    }*/
+                }
+            }
+
+            LoadActorPreviewOverrides();
+            InferMissingActorPreviews();
+
+            UcodeSimulator.currentfilename = "";
+
+            GL.PopAttrib();
+
+            MainForm.RefreshGroup = 0;
+            MainForm.RefreshRoom = -1;
+            //MainForm.SingleDListRefresh = null;
+    }
+
+        #endregion
+
+        #region ... Conversion
+
+        public void ConvertScene(bool ConsecutiveRoomInject, bool ForceRGBATextures, ZScene MainHeader, string Game)
+        {
+            /* Check if collision model is valid */
+            if (ColModel == null && cloneid == 0)
+            {
+                MessageBox.Show("There's no collision file!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            DebugConsole.WriteLine("converting header with cloneid : " + cloneid);
+
+            //if (!PartialRefresh())
+            //{
+                textureoffsets.Clear();
+                paletteoffsets.Clear();
+            //}
+
+
+            /* Create new scene file if its the main header */
+            if (cloneid == 0) SceneData = new List<byte>();
+            else SceneData = MainHeader.SceneData;
+
+            DebugConsole.WriteLine("scene count" + SceneData.Count.ToString("X"));
+
+
+            /* Write scene header */
+
+            if (SceneHeaders.Count > 0)
+            {
+                CmdAlternateSceneHeader = SceneData.Count;
+                Helpers.Append64(ref SceneData, 0x1800000000000000);                        /* Alternate Scene Headers */
+            }
+            else if (cloneid > 0)
+            {
+                MainHeader.SceneHeaders[MainHeader.SceneHeaders.FindIndex(x => x.Scene == this)]._InjectOffsetValue = (uint)(0x02000000 | SceneData.Count);
+                Helpers.Overwrite32(ref SceneData, MainHeader.SceneHeaders[MainHeader.SceneHeaders.FindIndex(x => x.Scene == this)]._InjectOffset, (uint)(0x02000000 | SceneData.Count));
+            }
+
+            Helpers.Append64(ref SceneData, (ulong)(0x1500000000000000 | ((ulong)Reverb << 48) | ((ulong)NightSFX << 8) | (ulong)Music));       /* Sound settings */
+            if (cloneid == 0)
+            {
+                CmdMapListOffset = SceneData.Count;
+                Helpers.Append64(ref SceneData, 0x0400000000000000);                        /* Map list */
+            }
+            else
+            {
+                Helpers.Append64(ref SceneData, (ulong)(0x0400000002000000 | ((ulong)_Rooms.Count << 48) | (ulong) (MainHeader.RoomOffsets)));
+            }
+            if (Transitions.Count > 0)
+            {
+                CmdTransitionsOffset = SceneData.Count;
+                Helpers.Append64(ref SceneData, 0x0E00000000000000);                        /* Transition list */
+            }
+
+            Helpers.Append64(ref SceneData, (ulong)(0x1900000000000000 | (ulong)CameraMovement << 48 | (ulong)WorldMap));  /* Camera movement, world map */
+            if (cloneid == 0)
+            {
+
+            if (CollisionSubdivisions[0] == 0 || CollisionSubdivisions[1] == 0 || CollisionSubdivisions[2] == 0) CollisionSubdivisions = new byte[3] { 16, 4, 16 };
+
+
+            CmdCollisionOffset = SceneData.Count;
+            Helpers.Append64(ref SceneData, 0x0300000000000000 | (ulong)CollisionSubdivisions[0] << 48 | (ulong)CollisionSubdivisions[1] << 40 | (ulong)CollisionSubdivisions[2] << 32 );                        /* Collision header */
+
+            CmdEntranceListOffset = SceneData.Count;
+            Helpers.Append64(ref SceneData, 0x0600000000000000);                        /* Entrance index */
+            }
+            else //if its an alternate header, we reuse the collision and entrance list...
+            {
+                Helpers.Append64(ref SceneData, (ulong) (0x0300000002000000 | (MainHeader.CollisionOffset)));
+                Helpers.Append64(ref SceneData, (ulong) (0x0600000002000000 | (MainHeader.EntranceOffset)));
+            }
+
+
+                                                                                        /* Special objects */
+            Helpers.Append64(ref SceneData, (ulong)(0x0700000000000000 | ((ulong)ElfMessage << 48) | SpecialObject));
+
+            if (Pathways.Count > 0)
+            {
+
+                CmdPathwayOffset = SceneData.Count;
+                Helpers.Append64(ref SceneData, 0x0D00000000000000);                        /* Pathways */
+
+            }
+
+            CmdSpawnPointOffset = SceneData.Count;
+            Helpers.Append64(ref SceneData, 0x0000000000000000);                        /* Spawn point list */
+
+            if (Game == "OOT")
+                Helpers.Append64(ref SceneData, (ulong)(0x1100000000000000 | ((ulong)SkyboxType << 24) | ((ulong)(Cloudy ? 1 : 0) << 16) | ((ulong)(OutdoorLight ? 0 : 1) << 8)));                         /* Skybox / lighting settings */
+            else
+                Helpers.Append64(ref SceneData, (ulong)(0x1100000000000000 | ((ulong)((SkyboxType > 0) ? 1 : 0) << 24) | (ulong)SkyboxType << 16) |  ((ulong)(OutdoorLight ? 0 : 1) << 8));                         /* Skybox / lighting settings */
+            
+            if (!MainForm.settings.EnableNewExitFormat && ExitList.Count > 0 || MainForm.settings.EnableNewExitFormat && ExitListV2.Count > 0)
+            {
+                CmdExitListOffset = SceneData.Count;
+                Helpers.Append64(ref SceneData, 0x1300000000000000);                        /* Exit list */
+            }
+
+            CmdEnvironmentsOffset = SceneData.Count;
+            Helpers.Append64(ref SceneData, 0x0F00000000000000);                        /* Environments */
+            
+
+            if (Cutscene.Count > 0)
+            {
+                CmdCutsceneOffset = SceneData.Count;
+                if (Game != "MM")
+                    Helpers.Append64(ref SceneData, 0x1700000000000000);                        /* Cutscene */
+                else
+                {
+                    Helpers.Append64(ref SceneData, (ulong) (0x1701000002000000 | (SceneData.Count + 8)));                       
+
+                }
+            }
+
+            if (Game == "MM")
+            {
+                MMCmdCameraOffset = SceneData.Count;
+                Helpers.Append64(ref SceneData, 0x1B00000000000000 | ((ulong)ActorCutscenes.Count << 48));                        /* MM Cameras */
+
+                Helpers.Append64(ref SceneData, 0x0200000000000000 | ((ulong)Cameras.Count << 48));
+
+                MMCmdMinimapOffset = SceneData.Count;
+               Helpers.Append64(ref SceneData, 0x1C00000000000000);                        /* MM Minimaps */
+
+
+            }
+
+            if (Game == "MM" || (MainForm.settings.command1AOoT && SegmentFunctions.FindIndex(x => x.Functions.Count > 0) != -1) || (MainForm.settings.command1AOoT && cloneid > 0 && inherittextureanims && MainForm.NormalHeader.SegmentFunctions.FindIndex(x => x.Functions.Count > 0) != -1))
+            {
+                MMCmdTextureAnimOffset = SceneData.Count;
+                if ((cloneid > 0 && inherittextureanims))
+                    Helpers.Append64(ref SceneData, (ulong) (0x1A00000000000000 | MainHeader.MainHeaderTextureAnimOffset));
+                else
+                    Helpers.Append64(ref SceneData, 0x1A00000000000000);                        /* MM Texture anims */
+            }
+
+           
+            Helpers.Append64(ref SceneData, 0x1400000000000000);                        /* End marker */
+
+            //empty space
+            for (int i = 0; i < MainForm.settings.EmptySpace; i++)
+            {
+                SceneData.Add(0);
+            }
+
+            AddPadding(ref SceneData, 0x10);
+
+            int endofsceneheader = SceneData.Count;
+
+            if (cloneid == 0 && AutomaticCollisionBounds)
+            {
+                //TODO optimize this call
+                CalculateCollisionBounds();
+            }
+
+            if (!MainForm.n64preview)
+            {
+
+                
+
+                if (cloneid == 0)
+                {
+                    for (int i = 0; i < Rooms.Count; i++) Helpers.Append64(ref SceneData, 0x0000000000000000);
+                }
+
+                //alternate scene header list
+                if (SceneHeaders.Count > 0)
+                {
+                    Helpers.Overwrite32(ref SceneData, CmdAlternateSceneHeader + 4, (uint)(0x02000000 | SceneData.Count));
+                    foreach (ZSceneHeader SceneHeader in SceneHeaders)
+                    {
+                        SceneHeader._InjectOffset = SceneData.Count;
+                        Helpers.Append32(ref SceneData, 0x00000000); //placeholder
+                    }
+                }
+                AddPadding(ref SceneData, 8);
+
+                if (Transitions.Count > 0)
+                {
+                    /* ... transition list ... */
+                    Helpers.Overwrite32(ref SceneData, CmdTransitionsOffset, (uint)(0x0E000000 | (Transitions.Count << 16)));
+                    Helpers.Overwrite32(ref SceneData, CmdTransitionsOffset + 4, (uint)(0x02000000 | SceneData.Count));
+                    foreach (ZActor Trans in Transitions)
+                    {
+
+                        SceneData.Add(Trans.FrontSwitchTo);
+                        SceneData.Add(Trans.FrontCamera);
+                        SceneData.Add(Trans.BackSwitchTo);
+                        SceneData.Add(Trans.BackCamera);
+                        Helpers.Append16(ref SceneData, Trans.Number);
+                        Helpers.Append16(ref SceneData, (ushort)Trans.XPos);
+                        Helpers.Append16(ref SceneData, (ushort)Trans.YPos);
+                        Helpers.Append16(ref SceneData, (ushort)Trans.ZPos);
+                        if (Game == "OOT")
+                            Helpers.Append16(ref SceneData, (ushort)Trans.YRot);
+                        else
+                        {
+                            short Yrot = (short)Math.Round(Trans.YRot / 182.0444f);
+                            if (Yrot < 0) Yrot += 360;
+                            Helpers.Append16(ref SceneData, (ushort)(0 | (Yrot << 7))); //0x1B command here in some future
+                        }
+                        Helpers.Append16(ref SceneData, Trans.Variable);
+                    }
+                    AddPadding(ref SceneData, 8);
+                }
+
+                /* ... exit list ... */
+                if (!MainForm.settings.EnableNewExitFormat && ExitList.Count > 0)
+                {
+                    Helpers.Overwrite32(ref SceneData, CmdExitListOffset + 4, (uint)(0x02000000 | SceneData.Count));
+                    foreach (ZUShort Exit in ExitList)
+                    {
+                        Helpers.Append16(ref SceneData, Exit.Value);
+                    }
+                    AddPadding(ref SceneData, 8);
+                }
+                else if (MainForm.settings.EnableNewExitFormat && ExitListV2.Count > 0)
+                {
+                    Helpers.Overwrite32(ref SceneData, CmdExitListOffset + 4, (uint)(0x02000000 | SceneData.Count));
+                    foreach (ZExit Exit in ExitListV2)
+                    {
+                        Helpers.Append32(ref SceneData, Exit.Raw + (uint)0x80000000);
+                    }
+                    AddPadding(ref SceneData, 8);
+                }
+
+                /* ... spawn point list ... */
+                Helpers.Overwrite32(ref SceneData, CmdSpawnPointOffset, (uint)(0x00000000 | (SpawnPoints.Count << 16)));
+                Helpers.Overwrite32(ref SceneData, CmdSpawnPointOffset + 4, (uint)(0x02000000 | SceneData.Count));
+                foreach (ZActor Spawn in SpawnPoints)
+                {
+                    Helpers.Append16(ref SceneData, Spawn.Number);
+                    Helpers.Append16(ref SceneData, (ushort)Spawn.XPos);
+                    Helpers.Append16(ref SceneData, (ushort)Spawn.YPos);
+                    Helpers.Append16(ref SceneData, (ushort)Spawn.ZPos);
+                    Helpers.Append16(ref SceneData, (ushort)Spawn.XRot);
+                    if (Game == "OOT")
+                        Helpers.Append16(ref SceneData, (ushort)Spawn.YRot);
+                    else
+                    {
+                        short Yrot = (short)Math.Round(Spawn.YRot / 182.0444f);
+                        if (Yrot < 0) Yrot += 360;
+                        Helpers.Append16(ref SceneData, (ushort)(0 | (Yrot << 7))); //0x1B command here in some future
+                    }
+                    Helpers.Append16(ref SceneData, (ushort)Spawn.ZRot);
+                    Helpers.Append16(ref SceneData, Spawn.Variable);
+                }
+                AddPadding(ref SceneData, 8);
+
+                /* ... environments ... */
+                Helpers.Overwrite32(ref SceneData, CmdEnvironmentsOffset, (uint)(0x0F000000 | (Environments.Count << 16)));
+                Helpers.Overwrite32(ref SceneData, CmdEnvironmentsOffset + 4, (uint)(0x02000000 | SceneData.Count));
+                foreach (ZEnvironment Env in Environments)
+                {
+                    Helpers.Append48(ref SceneData, (ulong)(Env.C1C.ToArgb() & 0xFFFFFF));
+                    Helpers.Append48(ref SceneData, (ulong)(Env.C2C.ToArgb() & 0xFFFFFF));
+                    Helpers.Append48(ref SceneData, (ulong)(Env.C3C.ToArgb() & 0xFFFFFF));
+                    Helpers.Append48(ref SceneData, (ulong)(Env.C4C.ToArgb() & 0xFFFFFF));
+                    Helpers.Append48(ref SceneData, (ulong)(Env.C5C.ToArgb() & 0xFFFFFF));
+                    Helpers.Append48(ref SceneData, (ulong)(Env.FogColorC.ToArgb() & 0xFFFFFF));
+                    Helpers.Append16(ref SceneData, (ushort)(Env.FogDistance | (Env.FogUnknown << 10)));
+                    Helpers.Append16(ref SceneData, Env.DrawDistance);
+
+                    // DebugConsole.WriteLine((Env.FogDistance | (Env.FogUnknown << 10)).ToString("X4"));
+                }
+                AddPadding(ref SceneData, 8);
+
+
+                /* ... Pathways ... */
+                if (Pathways.Count > 0)
+                {
+
+                    //Helpers.Overwrite32(ref SceneData, CmdPathwayOffset, (uint)(0x0D000000 | (Pathways.Count << 16)));
+                    Helpers.Overwrite32(ref SceneData, CmdPathwayOffset + 4, (uint)(0x02000000 | SceneData.Count));
+                    int pointoffset = -1;
+                    int incr = 0, incr2 = 0;
+
+                    foreach (ZPathway Path in Pathways)
+                    {
+
+                        Helpers.Append32(ref SceneData, (uint)(0x00000000 | (uint)Path.Points.Count << 24));
+                        Helpers.Append32(ref SceneData, (uint)(0x02000000 | (uint)SceneData.Count + 4 + ((Pathways.Count - 1 - incr2) * 8) + (incr * 6)));
+                        incr += Path.Points.Count;
+                        incr2++;
+                    }
+                    foreach (ZPathway Path in Pathways)
+                    {
+                        foreach (Vector3 point in Path.Points)
+                        {
+                            Helpers.Append16(ref SceneData, (ushort)point.X);
+                            Helpers.Append16(ref SceneData, (ushort)point.Y);
+                            Helpers.Append16(ref SceneData, (ushort)point.Z);
+                        }
+                    }
+                    AddPadding(ref SceneData, 8);
+                }
+
+                /* ... entrance list ... */
+                if (cloneid == 0)
+                {
+                    Helpers.Overwrite32(ref SceneData, CmdEntranceListOffset + 4, (uint)(0x02000000 | SceneData.Count));
+                    EntranceOffset = SceneData.Count;
+                    ushort entrancenum = 0;
+                    foreach (ZActor Spawn in SpawnPoints)
+                    {
+                        Vector3 pos = new Vector3(Spawn.XPos, Spawn.YPos + 1, Spawn.ZPos);
+                        float dist = 999999;
+                        ushort roomid = 0;
+
+                        if (Spawn.SpawnRoom != 0xFF)
+                        {
+                            roomid = Spawn.SpawnRoom;
+                        }
+                        else
+                        {
+
+                            ushort roomcount = 0;
+                            foreach (ZRoom Room in MainForm.CurrentScene.Rooms)
+                            {
+                                foreach (ObjFile.Group Group in Room.TrueGroups)
+                                {
+                                    //if (Group.Name.ToLower().Contains("#nocollision")) continue;
+
+                                    foreach (ObjFile.Triangle Tri in Group.Triangles)
+                                    {
+                                        Vector3 collision = ObjFile.RayCollision(
+                                            Room.ObjModel.Vertices[Tri.VertIndex[0]],
+                                            Room.ObjModel.Vertices[Tri.VertIndex[1]],
+                                            Room.ObjModel.Vertices[Tri.VertIndex[2]],
+                                            pos,
+                                            new Vector3(pos.X, pos.Y - 30000, pos.Z),
+                                            MainForm.CurrentScene.Scale);
+                                        if (collision != new Vector3(-1, -1, -1) && dist > MainForm.Distance3D(pos, collision))
+                                        {
+                                            dist = MainForm.Distance3D(pos, collision);
+                                            roomid = roomcount;
+                                        }
+                                    }
+                                }
+                                roomcount++;
+                            }
+                        }
+                        Helpers.Append16(ref SceneData, (ushort)(0x0000 | (entrancenum << 8) | roomid));
+                        entrancenum++;
+                    }
+                    AddPadding(ref SceneData, 8);
+                }
+
+                /* ... Cutscene ... */
+
+                if (Cutscene.Count > 0)
+                {
+                    Helpers.Overwrite32(ref SceneData, CmdCutsceneOffset + 4, (uint)(0x02000000 | SceneData.Count));
+
+                    if (Game == "OOT")
+                    {
+                        if (MainForm.settings.printoffsets) MainForm.InjectMessages.Add("Cutscene offset: " + ((uint)(0x02000000 | SceneData.Count)).ToString("X8"));
+                        cachecutsceneoffset = (uint)(0x02000000 | SceneData.Count);
+                    }
+
+                    else if (Game == "MM")
+                    {
+                        Helpers.Append32(ref SceneData, (uint)(0x02000000 | (SceneData.Count + 8)));
+                        Helpers.Append32(ref SceneData, (uint)(0x00000000 | (CutsceneEntrance << 16) | (CutsceneEntranceNum << 8) | (CutsceneFlag)));
+                        if (MainForm.settings.printoffsets) MainForm.InjectMessages.Add("Cutscene offset: " + ((uint)(0x02000000 | SceneData.Count)).ToString("X8"));
+                        cachecutsceneoffset = (uint)(0x02000000 | SceneData.Count);
+
+                        //Helpers.Overwrite32(ref SceneData, CmdCutsceneOffset - 8 + 4, (uint)(0x02000000 | SceneData.Count));
+                    }
+
+                    GenerateCutsceneData(SceneData, Game);
+
+
+                }
+
+                if (Game == "MM")
+                {
+                    Helpers.Overwrite32(ref SceneData, MMCmdCameraOffset + 4, (uint)(0x02000000 | SceneData.Count));
+
+
+                    foreach (ZActorCutscene ActorCutscene in ActorCutscenes)
+                    {
+                        Helpers.Append16(ref SceneData, ActorCutscene.Unk);
+                        Helpers.Append16(ref SceneData, (ushort)ActorCutscene.Length);
+                        Helpers.Append16(ref SceneData, (ushort)ActorCutscene.CamID);
+                        Helpers.Append16(ref SceneData, (ushort)ActorCutscene.CsID);
+                        Helpers.Append16(ref SceneData, (ushort)ActorCutscene.ActorCsID);
+                        SceneData.Add(ActorCutscene.Sound);
+                        SceneData.Add((byte)(ActorCutscene.CamID == 0xFFF6 ? 0x01 : 0xFF));
+                        Helpers.Append16(ref SceneData, (ushort)ActorCutscene.HUDFade);
+                        SceneData.Add(ActorCutscene.ReturnCamType);
+                        SceneData.Add(ActorCutscene.Letterbox);
+                    }
+
+
+                    AddPadding(ref SceneData, 8);
+
+
+                    Helpers.Overwrite32(ref SceneData, MMCmdMinimapOffset + 4, (uint)(0x02000000 | SceneData.Count));
+                    Helpers.Append32(ref SceneData, (uint)(0x02000000 | SceneData.Count + 8));
+                    Helpers.Append32(ref SceneData, 0xFFFF0000);
+                    Helpers.Append32(ref SceneData, 0x00000000);
+                    Helpers.Append16(ref SceneData, 0x0000);
+                    AddPadding(ref SceneData, 8);
+
+
+                }
+
+                if (cloneid == 0)
+                {
+                    /* ... collision */
+                    WriteSceneCollision(SceneData, 0x02, false, Game);
+                }
+
+
+                AddPadding(ref SceneData, 0x10);
+
+            }
+
+
+
+            /* Process rooms... */
+            if (MainForm.n64preview)
+            {
+                if (OriginalSceneData != null && OriginalSceneData.Count != 0)
+                    SayakaGL.GameHandler.LoadToRAM(MainHeader.OriginalSceneData.ToArray(), 0x02);
+                else if (MainHeader.SceneData != null)
+                    SayakaGL.GameHandler.LoadToRAM(MainHeader.SceneData.ToArray(), 0x02);
+            }
+            if (MainForm.n64preview && PregeneratedMesh)
+                SayakaGL.UcodeSimulator.BeginTextureCapture();
+            for (int i = 0; i < _Rooms.Count; i++)
+            {
+
+                
+
+                /* Get current room from list */
+                ZRoom Room = _Rooms[i];
+
+                RoomIndex = i;
+
+                /* Create new room file, DList offset list and texture list */
+                if (cloneid == 0)
+                {
+                    Room.RoomData = new List<byte>();
+                    Room.Type2Groups.Clear();
+                }
+                else
+                {
+                    Room.RoomData = MainHeader.Rooms[i].RoomData;
+                    CmdMeshHeaderOffset = MainHeader.Rooms[i].MeshHeaderOffset;
+                }
+                Room.DLists = new List<NDisplayList>();
+                Textures = new List<NTexture>();
+
+                /* Create room header */
+                WriteRoomHeader(Room, MainHeader);
+
+                if (cloneid == 0) // && !PartialRefresh
+                    GenerateTextures(Room, SceneData, Textures);
+
+               
+
+                if (!MainForm.n64preview)
+                {
+
+                /* Write objects */
+                if ((Room.ZObjects.Count + this.ZObjects.Count) != 0)
+                {
+                    ObjectOffset = Room.RoomData.Count;
+
+                    foreach (ZUShort Obj in this.ZObjects)
+                        Helpers.Append16(ref Room.RoomData, Obj.Value);
+
+                    foreach (ZUShort Obj in Room.ZObjects)
+                        Helpers.Append16(ref Room.RoomData, Obj.Value);
+
+                    AddPadding(ref Room.RoomData, 8);
+                }
+
+                /* Write actors */
+                if (Room.ZActors.Count != 0)
+                {
+                    ActorOffset = Room.RoomData.Count;
+                    foreach (ZActor Actor in Room.ZActors)
+                    {
+
+                        bool[] IgnoreMMRot = ( Game == "OOT" ? new bool[]{ false,false,false} : XMLreader.getActorIgnoreMMRot(Actor.Number.ToString("X4")));
+
+                        Helpers.Append16(ref Room.RoomData, (ushort)(Actor.Number | ((!IgnoreMMRot[1] ? 0 : 1) << 15) | ((!IgnoreMMRot[0] ? 0 : 1) << 14) | ((!IgnoreMMRot[2] ? 0 : 1) << 13)));
+                        Helpers.Append16(ref Room.RoomData, (ushort)Actor.XPos);
+                        Helpers.Append16(ref Room.RoomData, (ushort)Actor.YPos);
+                        Helpers.Append16(ref Room.RoomData, (ushort)Actor.ZPos);
+                        if (Game == "OOT" || MainForm.settings.IgnoreMMDaySystem == false)
+                        {
+                            Helpers.Append16(ref Room.RoomData, (ushort)Actor.XRot);
+                            Helpers.Append16(ref Room.RoomData, (ushort)Actor.YRot);
+                            Helpers.Append16(ref Room.RoomData, (ushort)Actor.ZRot);
+                        }
+                        else
+                        {
+                            short Xrot = (short)Math.Round(Actor.XRot / 182.0444f);
+                            if (Xrot < 0) Xrot += 360;
+                            short Yrot = (short)Math.Round(Actor.YRot / 182.0444f);
+                            if (Yrot < 0) Yrot += 360;
+                            short Zrot = (short)Math.Round(Actor.ZRot / 182.0444f);
+                            if (Zrot < 0) Zrot += 360;
+
+
+                            IgnoreMMRot[1] = XMLreader.getActorNoMMYRot(Actor.Number.ToString("X4")) == 1;
+
+
+                            Helpers.Append16(ref Room.RoomData, !IgnoreMMRot[0] ? ((ushort)(0x7 | (Xrot << 7))) : ((ushort)Actor.XRot)); // upper bits of time flags
+                            Helpers.Append16(ref Room.RoomData, !IgnoreMMRot[1] ? ((ushort)(0 | (Yrot << 7))) : ((ushort)Actor.YRot)); //0x1B command here in some future
+                            Helpers.Append16(ref Room.RoomData, !IgnoreMMRot[2] ? ((ushort)(0x7F | (Zrot << 7))) : ((ushort)Actor.ZRot)); // lower bits of time flags
+
+                        }
+                        Helpers.Append16(ref Room.RoomData, Actor.Variable);
+                        
+                    }
+                    AddPadding(ref Room.RoomData, 8);
+                }
+
+
+                /* Write additional lights */
+
+                List<ZAdditionalLight> tempAdditionalLights = new List<ZAdditionalLight>();
+                tempAdditionalLights.AddRange(Room.AdditionalLights.FindAll(x => x.ColorC != Color.Black || x.Radius != 0 || !x.PointLight));
+
+                if (tempAdditionalLights.Count != 0)
+                {
+                    ExtraLightOffset = Room.RoomData.Count;
+                    foreach (ZAdditionalLight light in tempAdditionalLights)
+                    {
+
+                        if (!light.PointLight)
+                        {
+                            Helpers.Append16(ref Room.RoomData, 0x0100);
+                            Helpers.Append16(ref Room.RoomData, (ushort)(0x0000 | (ushort)light.NSdirection << 8));
+                            Helpers.Append16(ref Room.RoomData, (ushort)(light.ColorC.R | (ushort)light.EWdirection << 8));
+                            Helpers.Append16(ref Room.RoomData, (ushort)(light.ColorC.B | (ushort)light.ColorC.G << 8));
+                            Helpers.Append16(ref Room.RoomData, 0x0000);
+                            Helpers.Append16(ref Room.RoomData, 0x0000);
+                            Helpers.Append16(ref Room.RoomData, 0x0000);
+                        }
+                        else
+                        {
+                            Helpers.Append16(ref Room.RoomData, 0x0000);
+                            Helpers.Append16(ref Room.RoomData, (ushort)light.XPos);
+                            Helpers.Append16(ref Room.RoomData, (ushort)light.YPos);
+                            Helpers.Append16(ref Room.RoomData, (ushort)light.ZPos);
+                            Helpers.Append16(ref Room.RoomData, (ushort)(light.ColorC.G | (ushort)light.ColorC.R << 8));
+                            Helpers.Append16(ref Room.RoomData, (ushort)(0x0000 | (ushort)light.ColorC.B << 8));
+                            Helpers.Append16(ref Room.RoomData, (ushort)(0x0000 | (ushort)light.Radius << 8));
+                        }
+                    }
+                    AddPadding(ref Room.RoomData, 8);
+                }
+
+
+                    // OOT texture anims
+
+                    if (Game == "OOT" && MainForm.settings.command1AOoT && SegmentFunctions.FindIndex(x => x.Functions.Count > 0) != -1 && !(cloneid > 0 && inherittextureanims))
+                    {
+                        if (cloneid == 0) MainHeaderTextureAnimOffset = (uint)(0x02000000 | SceneData.Count);
+
+                        Helpers.Overwrite32(ref SceneData, MMCmdTextureAnimOffset + 4, (uint)(0x02000000 | SceneData.Count));
+
+                        List<uint> updateoffsets = new List<uint>();
+
+                        int incr = 0, incr2 = 0, segmentid = 0;
+
+                        int lastbyteoffset = 0;
+
+                        foreach (ZSegmentFunction Segment in SegmentFunctions)
+                        {
+                            incr2 = 0;
+
+                            if (Segment.Functions.Count == 0) { segmentid++; continue; }
+
+                            foreach (ZTextureAnim TextureAnim in Segment.Functions)
+                            {
+
+                                if (TextureAnim.Type == ZTextureAnim.scroll)
+                                {
+                                    if (TextureAnim.FlagType == 0xFF && TextureAnim.XVelocity2 == 0 && TextureAnim.YVelocity2 == 0)
+                                    {
+                                        TextureAnim.TempType = 0x00; // single layer no flag
+                                    }
+                                    else if (TextureAnim.FlagType == 0xFF)
+                                    {
+                                        TextureAnim.TempType = 0x01; // double layer no flag
+                                    }
+                                    else
+                                    {
+                                        TextureAnim.TempType = 0x08; // double layer with flag
+                                    }
+                                }
+                                else if (TextureAnim.Type == ZTextureAnim.texswap)
+                                {
+                                    TextureAnim.TempType = 0x07; // pointer changes based on flag
+                                }
+                                else if (TextureAnim.Type == ZTextureAnim.texframe)
+                                {
+                                    bool sameframeduration = false;
+                                    int firstduration = 0;
+
+                                    if (TextureAnim.TextureSwapList.Count == 0)
+                                    {
+                                        //TextureAnim.Type = 0xFF; // invalid
+                                        continue;
+                                    }
+                                    else
+                                    {
+                                        firstduration = TextureAnim.TextureSwapList[0].Duration;
+                                        sameframeduration = TextureAnim.TextureSwapList.FindIndex(x => x.Duration != firstduration) == -1;
+                                    }
+
+
+                                    if (sameframeduration && TextureAnim.FlagType == 0xFF)
+                                    {
+                                        TextureAnim.TempType = 0x0B; // frame 1 pointer list no flag
+                                    }
+                                    else if (sameframeduration && TextureAnim.FlagType != 0xFF)
+                                    {
+                                        TextureAnim.TempType = 0x0C; // frame 1 pointer list with flag 
+                                    }
+                                    else if (!sameframeduration && TextureAnim.FlagType == 0xFF)
+                                    {
+                                        TextureAnim.TempType = 0x0D; // frame variable pointer list no flag 
+                                    }
+                                    else if (!sameframeduration && TextureAnim.FlagType != 0xFF)
+                                    {
+                                        TextureAnim.TempType = 0x0E; // frame variable pointer list with flag 
+                                    }
+                                }
+                                else if (TextureAnim.Type == ZTextureAnim.blending)
+                                {
+                                    if (TextureAnim.FlagType == 0xFF)
+                                    {
+                                        TextureAnim.TempType = 0x09; // color blend no flag
+                                    }
+                                    else
+                                    {
+                                        TextureAnim.TempType = 0x0A; // color blend flag
+                                    }
+                                }
+                                else if (TextureAnim.Type == ZTextureAnim.camera)
+                                {
+                                    TextureAnim.TempType = 0x0F;
+                                }
+                                else if (TextureAnim.Type == ZTextureAnim.condition)
+                                {
+                                    TextureAnim.TempType = 0x10;
+                                }
+                                else if (TextureAnim.Type == ZTextureAnim.polyswap)
+                                {
+                                    TextureAnim.TempType = 0x11;
+                                }
+                                lastbyteoffset = SceneData.Count;
+                                Helpers.Append32(ref SceneData, (uint)((uint)(0x00000000 | (uint)(segmentid + 1) << 24) | TextureAnim.TempType << 0));
+                                updateoffsets.Add((uint)SceneData.Count);
+                                Helpers.Append32(ref SceneData, (uint)(0x02000000));
+                                // incr += 8;
+                                incr2++;
+                            }
+
+
+
+                            segmentid++;
+                        }
+
+                        SceneData[lastbyteoffset] = (byte)-SceneData[lastbyteoffset];
+                        incr2 = 0;
+
+                        foreach (ZSegmentFunction Segment in SegmentFunctions)
+                        {
+                            if (Segment.Functions.Count == 0) { segmentid++; continue; }
+
+                            foreach (ZTextureAnim TextureAnim in Segment.Functions)
+                            {
+                                if (incr2 >= updateoffsets.Count) continue;
+
+                                Helpers.Overwrite32(ref SceneData, (int)updateoffsets[incr2], (uint)(0x02000000 | SceneData.Count));
+
+                                if (TextureAnim.TempType == 0x00 || TextureAnim.TempType == 0x01 || TextureAnim.TempType == 0x08)
+                                {
+                                    Helpers.Append32(ref SceneData, (uint)((uint)TextureAnim.Height1 | (byte)TextureAnim.XVelocity1 << 24 | (byte)TextureAnim.YVelocity1 << 16 | (uint)TextureAnim.Width1 << 8));
+
+                                    if (TextureAnim.TempType > 0) Helpers.Append32(ref SceneData, (uint)((uint)TextureAnim.Height2 | (byte)TextureAnim.XVelocity2 << 24 | (byte)TextureAnim.YVelocity2 << 16 | (uint)TextureAnim.Width2 << 8));
+
+
+                                }
+
+                                if (TextureAnim.TempType == 0x07)
+                                {
+                                    if (TextureAnim.TextureSwap != null && TextureAnim.TextureSwap2 != null)
+                                    {
+                                        Helpers.Append32(ref SceneData, (uint)(0x02000000 | Textures.Find(x => Path.GetFileName(x.Name) == TextureAnim.TextureSwap).TexOffset)); // TODO flag not set
+                                        Helpers.Append32(ref SceneData, (uint)(0x02000000 | Textures.Find(x => Path.GetFileName(x.Name) == TextureAnim.TextureSwap2).TexOffset)); // TODO flag set
+                                    }
+                                    else
+                                    {
+                                        Helpers.Append32(ref SceneData, (uint)(0x02000000));
+                                        Helpers.Append32(ref SceneData, (uint)(0x02000000));
+                                    }
+                                }
+
+
+                                if (TextureAnim.TempType == 0x08 || TextureAnim.TempType == 0x07 || TextureAnim.TempType == 0x0C || TextureAnim.TempType == 0x0E || TextureAnim.TempType == 0x0A || TextureAnim.TempType == 0x0F || TextureAnim.TempType == 0x10 || TextureAnim.TempType == 0x11) // flag stuff
+                                {
+                                    Helpers.Append32(ref SceneData, TextureAnim.FlagValue);
+                                    Helpers.Append32(ref SceneData, TextureAnim.FlagBitwise);
+                                    SceneData.Add(TextureAnim.FlagType);
+                                    if (TextureAnim.FlagReverse)
+                                        SceneData.Add(0);
+                                    else
+                                    {
+                                        if (TextureAnim.FlagType == 0x00 || TextureAnim.FlagType == 0x01 || TextureAnim.FlagType == 0x04 || TextureAnim.FlagType == 0x05)
+                                            SceneData.Add((byte)(TextureAnim.FlagValue < 0x20 ? (1 << (byte)TextureAnim.FlagValue) : (1 << (byte)TextureAnim.FlagValue - 0x20)));
+                                        else
+                                        {
+                                            SceneData.Add(1); // could give issues with other types
+                                        }
+                                    }
+                                    Helpers.Append16(ref SceneData, 0);
+                                    Helpers.Append16(ref SceneData, (ushort)(0 | (TextureAnim.Freeze ? 1 : 0) | (TextureAnim.FreezeAtEnd ? 2 : 0)));
+                                    Helpers.Append16(ref SceneData, 0);
+                                }
+
+
+
+                                if (TextureAnim.TempType == 0x0B || TextureAnim.TempType == 0x0C)
+                                {
+                                    int totalframes = TextureAnim.TextureSwapList[0].Duration * TextureAnim.TextureSwapList.Count;
+
+                                    Helpers.Append16(ref SceneData, (ushort)totalframes);
+                                    Helpers.Append16(ref SceneData, 0);
+                                    Helpers.Append16(ref SceneData, TextureAnim.TextureSwapList[0].Duration);
+                                    Helpers.Append16(ref SceneData, 0);
+
+                                    foreach (ZTextureAnimImage tex in TextureAnim.TextureSwapList)
+                                    {
+                                        if (Textures.FindIndex(x => Path.GetFileName(x.Name) == tex.Texture) != -1)
+                                            Helpers.Append32(ref SceneData, (uint)(0x02000000 | Textures.Find(x => Path.GetFileName(x.Name) == tex.Texture).TexOffset));
+                                        else
+                                            MessageBox.Show("Texture " + tex.Texture + " not found!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    }
+
+                                }
+
+                                if (TextureAnim.TempType == 0x0D || TextureAnim.TempType == 0x0E)
+                                {
+
+                                    Helpers.Append16(ref SceneData, 0);
+                                    Helpers.Append16(ref SceneData, 0);
+                                    Helpers.Append16(ref SceneData, (ushort)(TextureAnim.TextureSwapList.Count + 1));
+                                    ushort LoopPoint = 0;
+                                    for (int t = 0; t < TextureAnim.TextureSwapList.Count; t++)
+                                    {
+                                        Helpers.Append16(ref SceneData, LoopPoint);
+                                        LoopPoint += TextureAnim.TextureSwapList[t].Duration;
+                                    }
+
+                                    Helpers.Append16(ref SceneData, LoopPoint);
+
+                                    if (TextureAnim.TextureSwapList.Count % 2 != 0)
+                                        Helpers.Append16(ref SceneData, 0);
+
+
+
+                                    foreach (ZTextureAnimImage tex in TextureAnim.TextureSwapList)
+                                    {
+                                        if (Textures.FindIndex(x => Path.GetFileName(x.Name) == tex.Texture) != -1)
+                                            Helpers.Append32(ref SceneData, (uint)(0x02000000 | Textures.Find(x => Path.GetFileName(x.Name) == tex.Texture).TexOffset));
+                                        else
+                                            MessageBox.Show("Texture " + tex.Texture + " not found!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    }
+
+                                }
+
+                                if (TextureAnim.TempType == 0x09 || TextureAnim.TempType == 0x0A) //color blend
+                                {
+                                    ushort duration = 0;
+                                    bool hasprimlod = false;
+
+                                    foreach (ZTextureAnimColor color in TextureAnim.ColorList)
+                                    {
+                                        duration += color.Duration;
+                                        if (color.EnvAlpha != -1) hasprimlod = true;
+                                    }
+
+                                    SceneData.Add((byte)(hasprimlod ? 3 : 1)); // interpolate prim color and env alpha
+                                    SceneData.Add(0);
+
+                                    Helpers.Append16(ref SceneData, duration);
+
+                                    int cnt = 0;
+                                    foreach (ZTextureAnimColor color in TextureAnim.ColorList)
+                                    {
+                                        cnt++;
+                                        // DebugConsole.WriteLine(" a " + (color.C1C.ToArgb() << 8).ToString("X8"));
+
+                                        Helpers.Append32(ref SceneData, (uint)(color.C1C.ToArgb() << 8) + color.C1C.A);
+                                        Helpers.Append32(ref SceneData, (uint)((uint)(0xFFFFFF00) + (uint)(color.EnvAlpha)));
+                                        SceneData.Add(0);
+                                        SceneData.Add(0);
+                                        Helpers.Append16(ref SceneData, color.Duration);
+                                    }
+                                    Helpers.Append32(ref SceneData, 0);
+                                    Helpers.Append32(ref SceneData, 0);
+                                    Helpers.Append32(ref SceneData, 0);
+
+                                }
+
+                                if (TextureAnim.TempType == 0x0F)
+                                {
+                                    SceneData.Add(TextureAnim.CameraEffect);
+                                    SceneData.Add(0);
+                                    Helpers.Append16(ref SceneData, 0); //padding
+                                }
+
+                                if (TextureAnim.TempType == 0x11) //polytype swap
+                                {
+                                    SceneData.Add(TextureAnim.InactivePolytypeID);
+                                    SceneData.Add(TextureAnim.ActivePolytypeID);
+
+                                    byte InactiveVertexFlags = (byte)((byte)(PolyTypes[TextureAnim.InactivePolytypeID].PolyFlagA >> 12) | (byte)(PolyTypes[TextureAnim.InactivePolytypeID].PolyFlagB >> 8));
+                                    byte ActiveVertexFlags = (byte)((byte)(PolyTypes[TextureAnim.ActivePolytypeID].PolyFlagA >> 12) | (byte)(PolyTypes[TextureAnim.ActivePolytypeID].PolyFlagB >> 8));
+                                    SceneData.Add(InactiveVertexFlags);
+                                    SceneData.Add(ActiveVertexFlags);
+
+                                    Helpers.Append16(ref SceneData, TextureAnim.PolytypeStateTimer);
+                                    Helpers.Append16(ref SceneData, 0); //curTimer
+                                    Helpers.Append64(ref SceneData, PolyTypes[TextureAnim.InactivePolytypeID].Raw);
+                                    Helpers.Append64(ref SceneData, PolyTypes[TextureAnim.ActivePolytypeID].Raw);
+
+                                    if (InactiveVertexFlags == 0 && ActiveVertexFlags == 0)
+                                    {
+                                        Helpers.Append16(ref SceneData, 0xFFFF);
+                                        Helpers.Append16(ref SceneData, 0xFFFF);
+                                    }
+                                    else
+                                    {
+                                        List<ushort> triangleIDs = new List<ushort>();
+                                        if(polytypetris.ContainsKey(TextureAnim.InactivePolytypeID)) triangleIDs.AddRange(polytypetris[TextureAnim.InactivePolytypeID]);
+                                        triangleIDs.Add(0xFFFF);
+                                        if (polytypetris.ContainsKey(TextureAnim.ActivePolytypeID)) triangleIDs.AddRange(polytypetris[TextureAnim.ActivePolytypeID]);
+                                        triangleIDs.Add(0xFFFF);
+                                        foreach(ushort tri in triangleIDs)
+                                        {
+                                            Helpers.Append16(ref SceneData, tri);
+                                        }
+                                    }
+
+                                    
+                                }
+
+                                AddPadding(ref SceneData, 4);
+
+                                incr2++;
+                            }
+
+
+                        }
+
+
+
+
+
+                        AddPadding(ref SceneData, 8);
+
+                    }
+
+                }
+
+
+                /* Prepare dummy mesh header */
+                if (cloneid == 0)
+                {
+                    if (!Prerendered)
+                    {
+                        //Type 0 and 2
+                        MeshHeaderOffset = Room.MeshHeaderOffset = Room.RoomData.Count;
+                        Helpers.Append32(ref Room.RoomData, 0);  /* Mesh type X, Y meshes */
+                        Helpers.Append32(ref Room.RoomData, 0);  /* Start address */
+                        Helpers.Append32(ref Room.RoomData, 0);  /* End address */
+                    }
+                    else 
+                    {
+                        //Type 1
+                        MeshHeaderOffset = Room.MeshHeaderOffset = Room.RoomData.Count;
+                       
+
+                        if (prerenderimages.Count == 1) //PRERENDERED Single Background
+                        {
+                            PrerenderedFixOffset = MeshHeaderOffset + 32;
+                            Helpers.Append32(ref Room.RoomData, 0x01010000);  /* Mesh type 01, single background */
+                            Helpers.Append32(ref Room.RoomData, (uint)(0x03000000 | (MeshHeaderOffset + 32))); //dlist to draw
+                            Helpers.Append32(ref Room.RoomData, 0x03000000); // background location
+                            Helpers.Append32(ref Room.RoomData, 0x00000000); //unknown
+                            Helpers.Append32(ref Room.RoomData, 0x00000000); //unknown
+                            Helpers.Append16(ref Room.RoomData, 0x0140); //width (320)
+                            Helpers.Append16(ref Room.RoomData, 0x00F0); //height (240)
+                            Helpers.Append16(ref Room.RoomData, 0x0002); //image fmt? image size?
+                            Helpers.Append16(ref Room.RoomData, 0x0000); //image pal?
+                            Helpers.Append16(ref Room.RoomData, 0x0000); //image flip?
+                            Helpers.Append16(ref Room.RoomData, 0x0000); //padding
+                            Helpers.Append32(ref Room.RoomData, 0x00000000);  /* Start address */
+                            Helpers.Append32(ref Room.RoomData, 0x00000000);  /* End address */
+                        }
+                        else //PRERENDERED MULTI
+                        {
+                            Helpers.Append32(ref Room.RoomData, 0x01020000);  /* Mesh type 01, single background */
+                            //DebugConsole.WriteLine("Dlist to draw location: " + Room.RoomData.Count.ToString("X8"));
+                            Helpers.Append32(ref Room.RoomData, (uint)(0x03000000 | (MeshHeaderOffset + 16 + (28*prerenderimages.Count)))); //dlist to draw
+                            Helpers.Append32(ref Room.RoomData, (uint)(0 | (prerenderimages.Count << 24)));
+                            Helpers.Append32(ref Room.RoomData, (uint) (0x03000000 | (Room.RoomData.Count + 4)));  /* Start of background array */
+
+                            PrerenderedFixOffset = MeshHeaderOffset + 32;
+
+                            for (int p = 0; p < prerenderimages.Count; p++)
+                            {
+                                Helpers.Append32(ref Room.RoomData, (uint) (0x00820000 | (p << 8)));  /* 0x0082, background id */
+                               // DebugConsole.WriteLine("Background location: " + Room.RoomData.Count.ToString("X8"));
+                                Helpers.Append32(ref Room.RoomData, 0x03000000); // background location
+                                Helpers.Append32(ref Room.RoomData, 0x00000000); //unknown
+                                Helpers.Append32(ref Room.RoomData, 0x00000000); //unknown
+                                Helpers.Append16(ref Room.RoomData, 0x0140); //width (320)
+                                Helpers.Append16(ref Room.RoomData, 0x00F0); //height (240)
+                                Helpers.Append16(ref Room.RoomData, 0x0002); //image fmt? image size?
+                                Helpers.Append16(ref Room.RoomData, 0x0000); //image pal?
+                                Helpers.Append16(ref Room.RoomData, 0x0000); //image flip?
+                                Helpers.Append16(ref Room.RoomData, 0x0000); //padding
+                            }
+
+                            Helpers.Append32(ref Room.RoomData, 0x00000000); //overwrite dlist to draw
+
+                        }
+                    }
+
+                    //prerendering variables
+                    List<byte> DListData = new List<byte>();
+                    List<int> DListOffset = new List<int>();
+                    List<int> DListSize = new List<int>();
+
+
+                    if (!PregeneratedMesh) // normal mode
+                    {
+
+                    for (int j = 0; j < Room.TrueGroups.Count; j++)
+                    {
+                            //TODO is this correct?
+                            if (!Room.Type2)
+                            {
+                                Helpers.Append32(ref Room.RoomData, 0);  /* Display List offset 1 */
+                                Helpers.Append32(ref Room.RoomData, 0);  /* Display List offset 2 */
+                            }
+                            else
+                            {
+                                Helpers.Append64(ref Room.RoomData, 0);
+                                Helpers.Append32(ref Room.RoomData, 0);  /* Display List offset 1 */
+                                Helpers.Append32(ref Room.RoomData, 0);  /* Display List offset 2 */
+                            }
+                    }
+                    AddPadding(ref Room.RoomData, 8);
+
+
+
+                        if (Game == "MM" && !MainForm.n64preview)
+                        {
+                            if (TextureAnims.Count > 0)
+                            {
+                                Helpers.Overwrite32(ref SceneData, MMCmdTextureAnimOffset + 4, (uint)(0x02000000 | SceneData.Count));
+
+                                int incr = 0, incr2 = 0;
+
+                                foreach (ZTextureAnim TextureAnim in TextureAnims)
+                                {
+
+                                    Helpers.Append32(ref SceneData, (uint)(0x00000000 | (uint)(incr2 == TextureAnims.Count - 1 ? -(incr2 + 1) : incr2 + 1) << 24) | (uint)(TextureAnim.UseSecondLayer ? 1 : 0) << 0);
+                                    Helpers.Append32(ref SceneData, (uint)(0x02000000 | (uint)SceneData.Count + 4 + ((TextureAnims.Count - 1 - incr2) * 8) + (incr)));
+                                    incr += 8;
+                                    incr2++;
+                                }
+                                // Helpers.Append32(ref SceneData, (uint)(0x00000000 | (uint)-TextureAnims.Count << 24));
+                                // Helpers.Append32(ref SceneData, (uint)(0x02000000 | (uint)SceneData.Count + 4 + ((TextureAnims.Count - 1 - incr2) * 8) + (incr) + 8));
+                                foreach (ZTextureAnim TextureAnim in TextureAnims)
+                                {
+                                    Helpers.Append32(ref SceneData, (uint)((uint)TextureAnim.Height1 | (byte)TextureAnim.XVelocity1 << 24 | (byte)TextureAnim.YVelocity1 << 16 | (uint)TextureAnim.Width1 << 8));
+                                    Helpers.Append32(ref SceneData, (uint)((uint)TextureAnim.Height2 | (byte)TextureAnim.XVelocity2 << 24 | (byte)TextureAnim.YVelocity2 << 16 | (uint)TextureAnim.Width2 << 8));
+                                }
+                                // Helpers.Append32(ref SceneData, 0xFF002020);
+                                //Helpers.Append32(ref SceneData, 0x00002020);
+                                AddPadding(ref SceneData, 8);
+                            }
+                        }
+
+
+                    Room.LODgroups.Clear();
+                    Room.LODdlists.Clear();
+
+                    /* Create Display Lists */
+                    for (int j = 0; j < Room.TrueGroups.Count; j++)
+                    {
+
+                        if (Room.TrueGroups[j].Name.ToLower().Contains("#nomesh") || Room.TrueGroups[j].Name.Contains("TAG_NoMesh")) continue;
+
+                        if (Room.TrueGroups[j].Animated && MainForm.settings.command1AOoT && !MainForm.settings.MajorasMask && (MainForm.GetSegmentFunction(Room.TrueGroups[j].AnimationBank - 8).Functions.Count == 0) && !MainForm.n64preview)
+                        {
+                                MessageBox.Show("Animation segment " + Room.TrueGroups[j].AnimationBank + " is empty...", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+
+                        NDisplayList DList = new NDisplayList(Scale, Room.TrueGroups[j].TintAlpha, Room.TrueGroups[j].MultiTexAlpha, 1.0f, (Room.TrueGroups[j].ReverseLight) ? !OutdoorLight : OutdoorLight, Room.TrueGroups[j].BackfaceCulling, Room.TrueGroups[j].Animated, Room.TrueGroups[j].Metallic, Room.TrueGroups[j].Decal, Room.TrueGroups[j].Pixelated, Room.TrueGroups[j].Billboard, Room.TrueGroups[j].TwoAxisBillboard, Room.TrueGroups[j].IgnoreFog, Room.TrueGroups[j].SmoothRGBAEdges, Room.TrueGroups[j].EnvColor, Room.TrueGroups[j].AlphaMask, Room.TrueGroups[j].RenderLast, Room.TrueGroups[j].VertexNormals, Room.AffectedByPointLight, Room.TrueGroups[j].ScaledNormals, Room.TrueGroups[j].TexPointerPlus1, Room.TrueGroups[j].Type2Group, Room.TrueGroups[j].AnimationBank, 3);
+                        DList.Convert(Room.ObjModel, Room.TrueGroups[j], Textures, (!Prerendered) ? (uint)Room.RoomData.Count : (uint)(Room.RoomData.Count + DListData.Count), SceneSettings, AdditionalTextures);
+                        if (DList.Data != null)
+                        {
+                            //if (Prerendered && j != Room.TrueGroups.Count -1) Array.Resize(ref DList.Data,DList.Data.Length-8);
+                            if (!Prerendered)
+                            {
+                                if (MainForm.settings.ExportHeaderFile)
+                                {
+                                        string groupname = Room.TrueGroups[j].Name;
+                                        if (groupname.IndexOf('#') == 0) groupname = groupname.Substring(1);
+                                        groupname = groupname.SubstringTill(0, '#');
+                                        groupname = FaroresPlugin.ToValidCVariableName(groupname);
+                                        MainForm.HeaderMessages.Add("#define Room" + RoomIndex + "_" + groupname + " 0x" + (Room.RoomData.Count + DList.Vertoffset + 0x03000000).ToString("X8"));
+                                        MainForm.HeaderMessages.Add("#define Room" + RoomIndex + "_" + groupname + "_Vtx 0x" + (Room.RoomData.Count + 0x03000000).ToString("X8"));
+                                        MainForm.HeaderMessages.Add("#define Room" + RoomIndex + "_" + groupname + "_Vtx_Num " + DList.VertexCount);
+                                }
+                                Room.RoomData.AddRange(DList.Data);
+
+                                //type2 builds the Type2Groups
+                                if (Room.TrueGroups[j].Type2Group != -1)
+                                {
+                                    if (Room.Type2Groups.FindIndex(x => x.TagIndex == Room.TrueGroups[j].Type2Group) == -1)
+                                    {
+                                        ZRoom.Type2Group newt2 = new ZRoom.Type2Group(Room.TrueGroups[j].Type2Group);
+                                        newt2.DisplayLists.Add(DList);
+                                        Room.Type2Groups.Add(newt2);
+                                    }
+                                    else
+                                        Room.Type2Groups.Find(x => x.TagIndex == Room.TrueGroups[j].Type2Group).DisplayLists.Add(DList);
+                                }
+                            }
+                            else
+                            {
+                                DListOffset.Add((int)(DList.Offset));
+                                DListSize.Add((int)(DList.Data.Length));
+                                DListData.AddRange(DList.Data);
+                            }
+                        }
+
+                        if (Room.TrueGroups[j].LOD)
+                        {
+                            if (Room.LODgroups.FindIndex(x => x.id == Room.TrueGroups[j].LodGroup) == -1)
+                            {
+                                Room.LODgroups.Add(new LODgroup(Room.TrueGroups[j].LodGroup));
+                            }
+                            Room.LODgroups.Find(x => x.id == Room.TrueGroups[j].LodGroup).dlists.Add(new LODgroupDlist(DList, Room.TrueGroups[j].LodDistance));
+                            Room.LODdlists.Add(DList);
+
+                        }
+
+                        Room.DLists.Add(DList);
+                    }
+                   
+                    if (!MainForm.n64preview)
+                    foreach(LODgroup group in Room.LODgroups)
+                    {
+                     //   DebugConsole.WriteLine("lod group offset: " + Room.RoomData.Count.ToString("X8"));
+                        group.lodgroupoffset = (uint) (Room.RoomData.Count + 16);
+                        List<byte> lodgroupdata = new List<byte>();
+                        ushort midX = (ushort)(group.dlists[0].dlist.MinCoordinate.X + ((group.dlists[0].dlist.MaxCoordinate.X - group.dlists[0].dlist.MinCoordinate.X) / 2));
+                        ushort midY = (ushort)((group.dlists[0].dlist.MinCoordinate.Y + ((group.dlists[0].dlist.MaxCoordinate.Y - group.dlists[0].dlist.MinCoordinate.Y) / 2)));
+                        ushort midZ = (ushort)(group.dlists[0].dlist.MinCoordinate.Z + ((group.dlists[0].dlist.MaxCoordinate.Z - group.dlists[0].dlist.MinCoordinate.Z) / 2));
+                        Helpers.Append16(ref lodgroupdata, midX);
+                        Helpers.Append16(ref lodgroupdata, midY);
+                        Helpers.Append16(ref lodgroupdata, midZ);
+                        Helpers.Append16(ref lodgroupdata, 0);
+                        Helpers.Append64(ref lodgroupdata, 0); // padding
+                        Helpers.Append64(ref lodgroupdata,  (0x0100100203000000 | (ulong)(Room.RoomData.Count)));
+
+                        group.dlists = new List<LODgroupDlist>(@group.dlists.OrderBy(x => x.distance));
+
+                        foreach (LODgroupDlist dlist in group.dlists)
+                        {
+                            Helpers.Append64(ref lodgroupdata, (0xE100000003000000 | (ulong)(dlist.dlist.Offset)));
+                            Helpers.Append64(ref lodgroupdata, (0x0400000000000000 | (ulong)(dlist.distance)));
+
+                        }
+
+                        Helpers.Append64(ref lodgroupdata, (0xDF00000000000000 ));
+
+                        Room.RoomData.AddRange(lodgroupdata);
+
+                    }
+
+
+                    }
+
+                    else //pregenerated mode
+                    {
+
+                        List<uint> DLOffsets;
+
+                        _Rooms[i].N64DLists = new List<SayakaGL.UcodeSimulator.DisplayListStruct>();
+
+                        SayakaGL.GameHandler.LoadToRAM(_Rooms[i].OriginalRoomData.ToArray(), 0x03);
+                        DLOffsets = SayakaGL.GameHandler.GetDisplayLists((uint)(_Rooms[i].OriginalMeshHeaderOffset | (0x03 << 24)));
+
+                        foreach (UInt32 DL in DLOffsets)
+                        {
+                            SayakaGL.UcodeSimulator.ReadDL(0, DL, ref _Rooms[i].N64DLists);
+                            
+                        }
+
+                        if (PregeneratedMesh)
+                        {
+                            SayakaGL.UcodeSimulator.BeginGeometryCapture();
+                            SayakaGL.UcodeSimulator.ParseAllDLs(ref _Rooms[i].N64DLists);
+                            List<SayakaGL.UcodeSimulator.CapturedTriangle> triangles = SayakaGL.UcodeSimulator.EndGeometryCapture();
+                            if (triangles.Count > 0)
+                            {
+                                string modelPath = WriteCapturedRoomObj(i, triangles);
+                                _Rooms[i].ModelFilename = modelPath;
+                                _Rooms[i].ModelShortFilename = Path.GetFileNameWithoutExtension(modelPath);
+                                _Rooms[i].ObjModel = new ObjFile(modelPath);
+                                _Rooms[i].TrueGroups = _Rooms[i].ObjModel.Groups;
+                                _Rooms[i].ObjModel.BasePath = Path.GetDirectoryName(modelPath) + Path.DirectorySeparatorChar;
+                                foreach (ObjFile.Group group in _Rooms[i].TrueGroups)
+                                    group.BackfaceCulling = false;
+                                _Rooms[i].ObjModel.Prepare(_Rooms[i].TrueGroups);
+                            }
+                        }
+
+                        //we make room for the display lists
+                        for (int j = 0; j < _Rooms[i].N64DLists.Count; j++)
+                        {
+                            Helpers.Append64(ref Room.RoomData, 0);
+                            Helpers.Append32(ref Room.RoomData, 0);  /* Display List offset 1 */
+                            Helpers.Append32(ref Room.RoomData, 0);  /* Display List offset 2 */
+                        }
+                        AddPadding(ref Room.RoomData, 8);
+
+                      //  uint oldoffset = _Rooms[i].N64DLists[0].Commands[0].Address & 0x00FFFFFF; //first command of first dlist to determine start
+
+                        Room.oldoffset = 0xFFFFFFFF;
+
+                        for (int ii = 0; ii < Room.N64DLists.Count; ii++)
+                            for (int y = 0; y < Room.N64DLists[ii].Commands.Count; y++)
+                            {
+                                if (new byte[] { 01, 04, 0xDA, 0xDC, 0xDE, 0xFE, 0xFF }.Contains(Room.N64DLists[ii].Commands[y].ID))
+                                {
+                                    uint tmp = Room.N64DLists[ii].Commands[y].w1 & 0x00FFFFFF;
+                                    if (tmp != 0 && tmp < Room.oldoffset)
+                                    {
+                                        Room.oldoffset = tmp;
+                                    }
+                                }
+                            }
+
+
+                        Room.newoffset = (uint) Room.RoomData.Count;
+
+                     //  uint lastoffset = _Rooms[i].N64DLists[0].Commands[0].Address+8 & 0x00FFFFFF; //first command of first dlist to determine start
+
+                        uint lastoffset = 0;
+
+                        for (int ii = 0; ii < Room.N64DLists.Count; ii++)
+                            for (int y = 0; y < Room.N64DLists[ii].Commands.Count; y++)
+                            {
+                         
+                                    uint tmp = Room.N64DLists[ii].Commands[y].Address & 0x00FFFFFF;
+                                    if (tmp > lastoffset)
+                                    {
+                                        lastoffset = tmp;
+                                    }
+                                
+                            }
+
+                        lastoffset += 8;
+
+                  //      DebugConsole.WriteLine("oldoffset " + Room.oldoffset.ToString("X8"));
+                   //     DebugConsole.WriteLine("lastoffset " + lastoffset.ToString("X8"));
+                   //     DebugConsole.WriteLine("newoffset " + Room.newoffset.ToString("X8"));
+
+
+                        Room.RoomData.AddRange(_Rooms[i].OriginalRoomData.GetRange((int)Room.oldoffset, (int)(lastoffset-Room.oldoffset)));
+
+
+                        foreach (UcodeSimulator.DisplayListStruct DL in _Rooms[i].N64DLists)
+                        {
+                            /*
+                             * 01: w1
+                             * 04: w1
+                             * DA: w1
+                 
+                             * DC: w1
+                             * DE: w1
+                             
+                             * FD: w1 (texture offset)
+                             * FE FF: w1 (is this event used?)
+                             *
+                             *
+                             */
+
+                            DListOffset.Add((int)(Room.newoffset+DListData.Count));
+                            DListSize.Add((int)(DL.Commands.Count*8)); //each command is worth 8 bytes?
+
+                            int currentcommand = 0;
+
+
+                            foreach (UcodeSimulator.DLCommandStruct command in DL.Commands)
+                            {
+                                if (new byte[]{01,04,0xDA,0xDC,0xDE,0xFE,0xFF}.Contains(command.ID))
+                                {
+                                    int VSegment = (int)(command.w1 >> 24);
+                                    uint VOffset = (command.w1 & 0x00FFFFFF);
+
+                                    VOffset = VOffset - Room.oldoffset + Room.newoffset;
+
+                                    int oldcommandoffset = (int)((DL.StartAddress + currentcommand * 8 - Room.oldoffset + Room.newoffset) & 0x00FFFFFF);
+
+
+                                    if (VSegment == 0x02 || VSegment == 0x03)
+                                    {
+
+                                      //  Helpers.Append32(ref DListData, command.w0);
+                                       // Helpers.Append32(ref DListData, (uint)(VOffset | (VSegment << 24)));
+
+                                        Helpers.Overwrite32(ref Room.RoomData, oldcommandoffset, command.w0);
+                                        Helpers.Overwrite32(ref Room.RoomData, oldcommandoffset + 4, (uint)(VOffset | (VSegment << 24)));
+
+                            //            DebugConsole.WriteLine("Overwritten command " + command.ID.ToString("X2") + " at " + (oldcommandoffset + 4).ToString("X8") + " DLstartaddress " + (DL.StartAddress + currentcommand * 8).ToString("X8") + " Voffset " + ((VOffset | (VSegment << 24)).ToString("X8")));
+                                    }
+                                    else
+                                    {
+                                        //  Helpers.Append32(ref DListData, command.w0);
+                                        //  Helpers.Append32(ref DListData, command.w1);
+                                    //    Helpers.Overwrite32(ref Room.RoomData, (int)(DL.StartAddress - Room.oldoffset + Room.newoffset), command.w0);
+                                      //  Helpers.Overwrite32(ref Room.RoomData, (int)(DL.StartAddress - Room.oldoffset + Room.newoffset) +4, command.w1);
+                                    }
+
+
+                                }
+                                else if (command.ID == 0xFD)
+                                {
+                                    int VSegment = (int)(command.w1 >> 24);
+                                    uint VOffset = (command.w1 & 0x00FFFFFF);
+
+
+                                    int oldcommandoffset = (int)((DL.StartAddress + currentcommand * 8 - Room.oldoffset + Room.newoffset) & 0x00FFFFFF);
+
+                                    if (VSegment == 0x02 || VSegment == 0x03) // non dynamic texture
+                                    {
+                                       // DebugConsole.WriteLine(UcodeSimulator.NGraphics.Textures.Length);
+                                        //TODO do something with textures
+
+                        
+                                        Helpers.Overwrite32(ref Room.RoomData, oldcommandoffset + 4, (uint)(0 | (VSegment << 24)));
+                                    }
+
+                               //    Helpers.Append32(ref DListData, command.w0);
+                            //       Helpers.Append32(ref DListData, command.w1);
+                                }
+                                else
+                                {
+                             //       Helpers.Append32(ref DListData, command.w0);
+                          //          Helpers.Append32(ref DListData, command.w1);
+                                }
+
+                                currentcommand++;
+                           
+                            }
+                        }
+
+                        // Room.DLists.Add();
+                        //Dlist.Data
+
+
+                        // we add the dlist data to the room
+                        //Room.RoomData.AddRange(DListData);
+                      
+
+                    }
+
+
+
+                /* Fix room header and add missing data */
+                FixRoomHeader(Room);
+
+                if (Prerendered) //dlist jump table
+                {
+                 //   int fix = Helpers.Read24S(Room.RoomData, PrerenderedFixOffset + 1);
+                    uint fix2 = (uint) Room.RoomData.Count;
+
+
+                    Room.RoomData.AddRange(DListData);
+
+                    for (int z = 0; z < DListOffset.Count; z++)
+                    {
+                        //DebugConsole.WriteLine(" Pointers[z]: " + Pointers[z].ToString("X"));
+                        Helpers.Append64(ref Room.RoomData, 0xDE00000003000000 | (ulong)(DListOffset[z]));
+                        if (z == DListOffset.Count-1) Helpers.Append64(ref Room.RoomData, 0xDF00000000000000);
+                        
+                    }
+
+
+
+                    if (prerenderimages.Count == 1)
+                    {
+                          //  DebugConsole.WriteLine("Overwrite Dlist to draw: " + (PrerenderedFixOffset).ToString("X8"));
+                            Helpers.Overwrite32(ref Room.RoomData, PrerenderedFixOffset, (uint)(0x03000000 | fix2 + DListData.Count));
+
+                            Helpers.Overwrite32(ref Room.RoomData, PrerenderedFixOffset-24, (uint)(0x03000000 | Room.RoomData.Count));
+                            Room.RoomData.AddRange(File.ReadAllBytes(prerenderimages[0]));
+                            AddPadding(ref Room.RoomData, 10);
+                    }
+                    else if (prerenderimages.Count > 1)
+                    {
+                           // DebugConsole.WriteLine("Overwrite Dlist to draw: " + (PrerenderedFixOffset - 16 + (28*prerenderimages.Count)).ToString("X8"));
+                            Helpers.Overwrite32(ref Room.RoomData, (PrerenderedFixOffset - 16 + (28 * prerenderimages.Count)), (uint)(0x03000000 | fix2 + DListData.Count));
+
+
+                            for (int p = 0; p < prerenderimages.Count; p++)
+                            {
+                              //  DebugConsole.WriteLine("Overwrite offset: " + (PrerenderedFixOffset - 20 + (28 * p) + 8).ToString("X8"));
+                                Helpers.Overwrite32(ref Room.RoomData, PrerenderedFixOffset - 20 + (28*p) + 8, (uint)(0x03000000 | Room.RoomData.Count));
+                                int jpgsize = Room.RoomData.Count;
+                                Room.RoomData.AddRange(File.ReadAllBytes(prerenderimages[p]));
+                                AddPadding(ref Room.RoomData, 0x10);
+                                jpgsize = Room.RoomData.Count - jpgsize;
+                                Room.RoomData.AddRange(new byte[0x25800 - jpgsize]);
+                            }
+                    }
+                }
+
+                }
+                else
+                {
+                    FixRoomHeader(Room);
+                }
+
+                // DebugConsole.WriteLine("offset" + Helpers.Read24S(Room.RoomData,PrerenderedFixOffset+1).ToString("X"));
+
+                /* Add some padding for good measure */
+                AddPadding(ref Room.RoomData, 0x10);
+
+                /* Store room data length */
+                Room.FullDataLength = Room.RoomData.ToArray().Length;
+
+                /* Put modified room info back into list */
+                _Rooms[i] = Room;
+            }
+
+            /* Fix scene header; map list ... */
+            if (cloneid == 0 && !MainForm.n64preview)
+            {
+                Helpers.Overwrite32(ref SceneData, CmdMapListOffset, (uint)(0x04000000 | (_Rooms.Count << 16)));
+                Helpers.Overwrite32(ref SceneData, CmdMapListOffset + 4, (uint)(0x02000000 | endofsceneheader));
+                RoomOffsets = endofsceneheader;
+            }
+
+            if (_Rooms.Count < 1) return;
+
+            if (!MainForm.n64preview)
+            {
+
+                AddPadding(ref SceneData, 0x10);
+            AddPadding(ref SceneData, 8);
+
+            int RoomInjectOffset = MainHeader._Rooms[0].InjectOffset;
+            RoomInjectOffset = InjectOffset + SceneData.Count;
+            int counter = 0;
+                foreach (ZRoom Room in MainHeader._Rooms)
+                {
+                    Room.FullDataLength = Room.RoomData.ToArray().Length;
+
+                    DebugConsole.WriteLine("inject offset: " + RoomInjectOffset.ToString("X"));
+                    DebugConsole.WriteLine("full data length: " + Room.FullDataLength.ToString("X"));
+
+                    Helpers.Overwrite32(ref SceneData, MainHeader.RoomOffsets + counter, (uint)RoomInjectOffset);
+                    Helpers.Overwrite32(ref SceneData, MainHeader.RoomOffsets + 4 + counter, (uint)(RoomInjectOffset + Room.FullDataLength));
+                    RoomInjectOffset += Room.FullDataLength;
+                    counter += 8;
+                
+                }
+            }
+
+
+            // AddPadding(ref SceneData, 8);
+
+        }
+
+        public void GenerateTextures(ZRoom Room, List<Byte> Data, List<NTexture> Textures)
+        {
+            /* Create textures */
+
+            List<ObjFile.Material> MaterialsList = new List<ObjFile.Material>();
+            MaterialsList.AddRange(Room.ObjModel.Materials);
+            MaterialsList.AddRange(AdditionalTextures);
+
+
+            for (int M = 0; M < MaterialsList.Count; M++)
+            {
+
+                /* Get material & force RGBA default */
+                ObjFile.Material Mat = MaterialsList[M];
+                Mat.ForceRGBA = MainForm.settings.ForceRGBATextures;
+
+                string name = Mat.DisplayName.ToLower();
+                string tags = Mat.tags.ToLower();
+
+                if (name.Contains("#forcergba") || name.Contains("#rgba16") || tags.Contains("#forcergba") || tags.Contains("#rgba16"))
+                    Mat.ForceRGBA = true;
+
+                else if (name.Contains("#rgba32") || tags.Contains("#rgba32"))
+                    Mat.ForcedFormat = "RGBA32";
+
+                else if (name.Contains("#ci4") || tags.Contains("#ci4"))
+                    Mat.ForcedFormat = "CI4";
+
+                else if (name.Contains("#ci8") || tags.Contains("#ci8"))
+                    Mat.ForcedFormat = "CI8";
+
+                else if (name.Contains("#i4") || tags.Contains("#i4"))
+                    Mat.ForcedFormat = "I4";
+
+                else if (name.Contains("#i8") || tags.Contains("#i8"))
+                    Mat.ForcedFormat = "I8";
+
+                else if (name.Contains("#ia4") || tags.Contains("#ia4"))
+                    Mat.ForcedFormat = "IA4";
+
+                else if (name.Contains("#ia8") || tags.Contains("#ia8"))
+                    Mat.ForcedFormat = "IA8";
+
+                else if (name.Contains("#ia16") || tags.Contains("#ia16"))
+                    Mat.ForcedFormat = "IA16";
+
+                bool appears = false;
+                //check if material is used first....
+
+                if (name.Contains("#special") || tags.Contains("#special"))
+                    appears = true;
+                else
+                {
+                    for (int x = 0; x < Room.TrueGroups.Count; x++)
+                    {
+                        if (Room.TrueGroups[x].MultiTexMaterialName == MaterialsList[M].Name) { appears = true; }
+                        for (int y = 0; y < Room.TrueGroups[x].Triangles.Count; y++)
+                        {
+                            if (Room.TrueGroups[x].Triangles[y].MaterialName == Mat.Name)
+                            {
+                                appears = true;
+                            }
+                        }
+                    }
+                    foreach (ZSegmentFunction Segment in SegmentFunctions)
+                    {
+                        foreach (ZTextureAnim TextureAnim in Segment.Functions)
+                        {
+                            if (TextureAnim.TextureSwap == Mat.Name)
+                                appears = true;
+
+                            if (TextureAnim.TextureSwap2 == Mat.Name)
+                                appears = true;
+
+                            foreach(ZTextureAnimImage TextureAnimImg in TextureAnim.TextureSwapList)
+                            {
+                                if (TextureAnimImg.Texture == Mat.Name)
+                                    appears = true;
+                            }
+                        }
+                    }
+                }
+
+                // DebugConsole.WriteLine("mat: " + Mat.Name);
+
+                if (!appears)
+                {
+                    Textures.Add(new NTexture());
+                    continue;
+                }
+
+                if (!MainForm.settings.DontConvertMultitexture)
+                {
+                    // ---VERY kludgy RGBA forcing code--- 
+                    for (int x = 0; x < Room.TrueGroups.Count; x++)
+                    {
+
+                        // If group has multitex material number... 
+                        if (Room.TrueGroups[x].MultiTexMaterialName != "")
+                        {
+                            // Turn force RGBA ON for multitex material 
+
+                            if (MaterialsList.FindIndex(w => w.Name == Room.TrueGroups[x].MultiTexMaterialName) == -1)
+                            {
+                                Room.TrueGroups[x].MultiTexMaterialName = "";
+                                continue;
+                            }
+
+                            MaterialsList[MaterialsList.FindIndex(w => w.Name == Room.TrueGroups[x].MultiTexMaterialName)].ForceRGBA = true;
+
+
+                            // Scan group's triangles for current material name... 
+
+                            for (int y = 0; y < Room.TrueGroups[x].Triangles.Count; y++)
+                            {
+                                if (Room.TrueGroups[x].Triangles[y].MaterialName == Mat.Name)
+                                {
+                                    //Change material name to RGBA
+
+                                    Mat.ForceRGBA = true;
+                                    goto Cont;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                /* Continue here... */
+                Cont:
+                if (Mat.TexImage != null)
+                {
+                    /* Create new texture, convert current material */
+                    NTexture Texture = new NTexture();
+                    Texture.Convert(Mat);
+
+                    //string filename = Mat.map_Kd.Split(Path.AltDirectorySeparatorChar).Last();
+                   // filename = filename.Split(Path.DirectorySeparatorChar).Last(); //TODO
+
+                    string filename = Mat.map_Kd;
+
+
+                    Texture.Name = filename;
+
+                    if (textureoffsets.ContainsKey(filename))
+                    {
+                        Texture.TexOffset = (uint)textureoffsets[filename];
+
+                        DebugConsole.WriteLine("Matching texture: " + filename + " " + String.Format("" + (uint)textureoffsets[filename], 'X'));
+
+                    }
+                    else
+                    {
+                        /* Add current offset to texture offset list */
+                        Texture.TexOffset = ((uint)Data.Count);
+
+                        textureoffsets.Add(filename, Data.Count);
+
+                        DebugConsole.WriteLine("Writting texture offset: " + filename + " " + String.Format("" + Data.Count, 'X'));
+
+                        /* Write converted data to room file */
+                        Data.AddRange(Texture.Data);
+
+
+                    }
+
+
+                    /* See if we've got a CI-format texture... */
+                    int Format = ((Texture.Type & 0xE0) >> 5);
+
+                   // DebugConsole.WriteLine("Texture format N64: " + Format.ToString("X2"));
+
+                    if (Format == GBI.G_IM_FMT_CI)
+                    {
+                        Texture.PalOffset = 0;
+                        /* OLD palette sharing
+                        foreach (KeyValuePair<byte[], int> palette in paletteoffsets)
+                        {
+                            if (Texture.Palette.OrderBy(a => a).SequenceEqual(palette.Key.OrderBy(a => a)))
+                            {
+                                Texture.PalOffset = (uint)palette.Value;
+                                DebugConsole.WriteLine("Matching palette: " + String.Format("" + (uint)palette.Value, 'X'));
+                                break;
+                            }
+                        }*/
+                        if (Texture.PalOffset == 0)
+                        {
+                            /* If it's CI, add current offset to palette offset list */
+
+                            Texture.PalOffset = ((uint)Data.Count);
+
+                            paletteoffsets.Add(Texture.Palette, Data.Count);
+
+                            DebugConsole.WriteLine("Writting palette offset: " + String.Format("" + Data.Count, 'X'));
+
+                            /* Write palette data to room file */
+                            Data.AddRange(Texture.Palette);
+                        }
+
+
+                    }
+                    else
+                    {
+                        /* Add dummy entry to palette offset list */
+                        Texture.PalOffset = Dummy;
+                    }
+
+                    Textures.Add(Texture);
+                }
+                else
+                {
+                    
+                    Textures.Add(new NTexture());
+                }
+            }
+        }
+
+        private void RebuildEditedRoomNativePreview()
+        {
+            if (!MainForm.n64preview || _Rooms == null || _Rooms.Count == 0) return;
+
+            // ConvertScene has already produced the current room bytes. Load
+            // the same scene segment used by the native preview before parsing
+            // edited room display lists so texture animation and segment
+            // references retain their normal scene context.
+            if (OriginalSceneData != null && OriginalSceneData.Count != 0)
+                SayakaGL.GameHandler.LoadToRAM(OriginalSceneData.ToArray(), 0x02);
+            else if (SceneData != null && SceneData.Count != 0)
+                SayakaGL.GameHandler.LoadToRAM(SceneData.ToArray(), 0x02);
+
+            SayakaGL.UcodeSimulator.BeginTextureCapture();
+            for (int roomIndex = 0; roomIndex < _Rooms.Count; roomIndex++)
+            {
+                ZRoom room = _Rooms[roomIndex];
+                if (!room.MeshEdited || room.RoomData == null || room.RoomData.Count == 0 || room.MeshHeaderOffset < 0)
+                    continue;
+
+                room.N64DLists = new List<SayakaGL.UcodeSimulator.DisplayListStruct>();
+                SayakaGL.UcodeSimulator.currentfilename = "EditedRoom" + roomIndex.ToString();
+                SayakaGL.UcodeSimulator.TextureCache.Clear();
+                SayakaGL.GameHandler.LoadToRAM(room.RoomData.ToArray(), 0x03);
+
+                List<uint> displayListOffsets = SayakaGL.GameHandler.GetDisplayLists(
+                    (uint)(room.MeshHeaderOffset | (0x03 << 24)));
+                if (displayListOffsets == null || displayListOffsets.Count == 0)
+                    continue;
+
+                SayakaGL.UcodeSimulator.BeginGeometryCapture();
+                foreach (uint displayListOffset in displayListOffsets)
+                    SayakaGL.UcodeSimulator.ReadDL(0, displayListOffset, ref room.N64DLists);
+                SayakaGL.UcodeSimulator.ParseAllDLs(ref room.N64DLists);
+                SayakaGL.UcodeSimulator.EndGeometryCapture();
+            }
+        }
+
+        public void GenerateCutsceneData(List<Byte> data, string Game)
+        {
+            int totalframes = 0;
+            Helpers.Append32(ref data, (uint)Cutscene.Count + (uint)Cutscene.FindAll(x => x.Marker == 0x01).Count);
+            int totalframesoffset = data.Count;
+            Helpers.Append32(ref data, 0xFEFEFEFE);
+            List<ZCutscene> orderedcutscene = new List<ZCutscene>();
+            List<ZCutscene> backupcutscene = new List<ZCutscene>();
+
+            int cameradataheader = 0; // MM stuff
+
+            if (Game == "MM")
+            {
+                //reordering camera commands
+                orderedcutscene = new List<ZCutscene>();
+                Cutscene.OrderBy(x => x.StartFrame);
+                foreach (ZCutscene cutscene in Cutscene)
+                {
+                    if (cutscene.Marker == 0x5A)
+                    {
+                        orderedcutscene.Add(cutscene);
+                    }
+                }
+                foreach (ZCutscene cutscene in Cutscene)
+                {
+                    if (cutscene.Marker != 0x5A)
+                    {
+                        orderedcutscene.Add(cutscene);
+                    }
+                }
+                backupcutscene = Cutscene;
+                Cutscene = orderedcutscene;
+            }
+
+            foreach (ZCutscene cutscene in Cutscene)
+            {
+                // if (cutscene.Marker != 0x13) totalframes += cutscene.GetTotalFrames();
+                if (cutscene.StartFrame + cutscene.GetTotalFrames() > totalframes) totalframes = cutscene.StartFrame + cutscene.GetTotalFrames();
+                if (Game == "OOT" && cutscene.Marker == 0x01 || Game == "OOT" && cutscene.Marker == 0x05) //position
+                {
+                    if (cutscene.Points.Count == 0)
+                    {
+                        MessageBox.Show("There's a camera cutscene command with 0 points!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        continue;
+                    }
+                    Helpers.Append32(ref data, (uint)cutscene.Marker);
+
+                    Helpers.Append16(ref data, 0x0000); //unknown w
+                    Helpers.Append16(ref data, cutscene.StartFrame);
+                    Helpers.Append16(ref data, (ushort)(cutscene.StartFrame + cutscene.GetTotalFrames()));
+                    Helpers.Append16(ref data, 0x0000); //unknown z
+
+                    int pcounter = 1;
+
+
+                    int lastid = cutscene.Points.Count - 1;
+
+                    if (!MainForm.settings.NoDummyPoints)
+                    {
+
+                        //mandatory to have atleast 4 points
+                        while (cutscene.Points.Count < 4)
+                        {
+                            cutscene.Points.Add(new ZCutscenePosition(cutscene.Points[lastid].Cameraroll, 0, 60, cutscene.Points[lastid].Position, cutscene.Points[lastid].Position2));
+                        }
+                        //also we need 2 dummy points
+                        float firstfov = cutscene.Points[0].Angle;
+                        float lastfov = cutscene.Points[cutscene.Points.Count - 1].Angle;
+
+                        cutscene.Points.Add(new ZCutscenePosition(0, 0, lastfov, cutscene.Points[lastid].Position, cutscene.Points[lastid].Position2));
+                        cutscene.Points.Add(new ZCutscenePosition(0, 0, lastfov, cutscene.Points[lastid].Position, cutscene.Points[lastid].Position2));
+                        cutscene.Points.Insert(0, new ZCutscenePosition(0, 1, firstfov, cutscene.Points[0].Position, cutscene.Points[0].Position2));
+                        cutscene.Points.Insert(0, new ZCutscenePosition(0, 1, firstfov, cutscene.Points[0].Position, cutscene.Points[0].Position2));
+                    }
+
+                    foreach (ZCutscenePosition point in cutscene.Points)
+                    {
+                        Helpers.Append16(ref data, (ushort)(0x0000 | ((pcounter == cutscene.Points.Count ? 0xFF : 0x00) << 8)));
+                        Helpers.Append16(ref data, 0x0000); //padding
+                        Helpers.Append32(ref data, 0x00000000); //angle, but its unused here
+                        Helpers.Append16(ref data, (ushort)point.Position.X);
+                        Helpers.Append16(ref data, (ushort)point.Position.Y);
+                        Helpers.Append16(ref data, (ushort)point.Position.Z);
+                        Helpers.Append16(ref data, 0x0000); //padding
+                        pcounter++;
+                    }
+
+                    //focus point
+
+                    Helpers.Append32(ref data, (uint)cutscene.Marker + 1);
+
+                    Helpers.Append16(ref data, 0x0000); //unknown w
+                    Helpers.Append16(ref data, cutscene.StartFrame);
+                    Helpers.Append16(ref data, (ushort)(cutscene.StartFrame + cutscene.GetTotalFrames()));
+                    Helpers.Append16(ref data, 0x0000); //unknown z
+
+                    pcounter = 1;
+
+                    foreach (ZCutscenePosition point in cutscene.Points)
+                    {
+                        Helpers.Append16(ref data, (ushort)(0x0000 | ((pcounter == cutscene.Points.Count ? 0xFF : 0x00) << 8) | (point.Cameraroll & 0x00FF)));
+                        Helpers.Append16(ref data, point.Frames);
+                        data.AddRange(BitConverter.GetBytes(point.Angle).Reverse());
+                        Helpers.Append16(ref data, (ushort)point.Position2.X);
+                        Helpers.Append16(ref data, (ushort)point.Position2.Y);
+                        Helpers.Append16(ref data, (ushort)point.Position2.Z);
+                        Helpers.Append16(ref data, 0x0000); //padding
+                        pcounter++;
+                    }
+
+                    if (!MainForm.settings.NoDummyPoints)
+                    {
+                        //delete dummy points
+                        cutscene.Points.RemoveAt(cutscene.Points.Count - 1);
+                        cutscene.Points.RemoveAt(cutscene.Points.Count - 1);
+                        cutscene.Points.RemoveAt(0);
+                        cutscene.Points.RemoveAt(0);
+                    }
+
+                }
+                else if (Game == "MM" && cutscene.Marker == 0x5A) //position
+                {
+                    if (cameradataheader == 0)
+                    {
+                        Helpers.Append32(ref data, (uint)cutscene.Marker);
+                        cameradataheader = data.Count;
+                        Helpers.Append32(ref data, 0); // size of the block
+                    }
+
+                    int lastid = cutscene.Points.Count - 1;
+
+                    if (!MainForm.settings.NoDummyPoints)
+                    {
+
+                        //mandatory to have atleast 4 points
+                        while (cutscene.Points.Count < 4)
+                        {
+                            cutscene.Points.Add(new ZCutscenePosition(cutscene.Points[lastid].Cameraroll, 0, 45, cutscene.Points[lastid].Position, cutscene.Points[lastid].Position2));
+                        }
+                        //also we need 2 dummy points
+                        cutscene.Points.Add(new ZCutscenePosition(0, 0, 45, cutscene.Points[lastid].Position, cutscene.Points[lastid].Position2));
+                        cutscene.Points.Add(new ZCutscenePosition(0, 0, 45, cutscene.Points[lastid].Position, cutscene.Points[lastid].Position2));
+                        cutscene.Points.Insert(0, new ZCutscenePosition(0, 1, 45, cutscene.Points[0].Position, cutscene.Points[0].Position2));
+                        cutscene.Points.Insert(0, new ZCutscenePosition(0, 1, 45, cutscene.Points[0].Position, cutscene.Points[0].Position2));
+                    }
+
+                    //int numentries = data.Count;
+                    Helpers.Append16(ref data, (ushort)cutscene.Points.Count); //num entries
+                    Helpers.Append16(ref data, (ushort)((cutscene.Points.Count * 32) + 8)); //size (???)
+                    Helpers.Append32(ref data, (uint)(cutscene.GetTotalFrames() - cutscene.StartFrame));
+
+                    Helpers.Overwrite32(ref data, cameradataheader, (uint)(Helpers.Read32(data, cameradataheader) + ((cutscene.Points.Count * 32) + 8)));
+
+                    int pcounter = 1;
+                    int endframe = cutscene.StartFrame;
+
+
+
+
+                    foreach (ZCutscenePosition point in cutscene.Points)
+                    {
+
+                        endframe += point.Frames;
+                        Helpers.Append16(ref data, 0564); //camera behaviour unknown, use 05,  factor 00?
+                        Helpers.Append16(ref data, point.Frames); //end frame
+                        Helpers.Append16(ref data, (ushort)point.Position2.X);
+                        Helpers.Append16(ref data, (ushort)point.Position2.Y);
+                        Helpers.Append16(ref data, (ushort)point.Position2.Z);
+                        Helpers.Append16(ref data, 0x0000); //actor focus
+                        pcounter++;
+
+                    }
+
+                    foreach (ZCutscenePosition point in cutscene.Points)
+                    {
+                        endframe += point.Frames;
+                        Helpers.Append16(ref data, 0564); //camera behaviour unknown, use 05,  factor 100?
+                        Helpers.Append16(ref data, point.Frames); //end frame
+                        Helpers.Append16(ref data, (ushort)point.Position.X);
+                        Helpers.Append16(ref data, (ushort)point.Position.Y);
+                        Helpers.Append16(ref data, (ushort)point.Position.Z);
+                        Helpers.Append16(ref data, 0x0000); //actor focus
+                        pcounter++;
+
+                    }
+
+                    foreach (ZCutscenePosition point in cutscene.Points)
+                    {
+                        Helpers.Append16(ref data, point.Frames); //length (frames)
+                        Helpers.Append16(ref data, (ushort)point.Cameraroll);
+                        Helpers.Append16(ref data, (ushort)point.Angle);
+                        Helpers.Append16(ref data, 0x0000); //padding
+                        pcounter++;
+                    }
+
+                    if (!MainForm.settings.NoDummyPoints)
+                    {
+                        //delete dummy points
+                        cutscene.Points.RemoveAt(cutscene.Points.Count - 1);
+                        cutscene.Points.RemoveAt(cutscene.Points.Count - 1);
+                        cutscene.Points.RemoveAt(0);
+                        cutscene.Points.RemoveAt(0);
+                    }
+
+                }
+                else if ((Game == "OOT" && cutscene.Marker == 0x13) || (Game == "MM" && cutscene.Marker == 0xA))
+                {
+                    int lastendframe = 0;
+                    Helpers.Append32(ref data, (uint)cutscene.Marker);
+                    Helpers.Append16(ref data, 0x0000);
+                    int textboxcountoffset = data.Count;
+                    ushort textboxcount = (ushort)cutscene.Textboxes.Count;
+                    Helpers.Append16(ref data, textboxcount);
+                    foreach (ZTextbox textbox in cutscene.Textboxes)
+                    {
+                        
+                        Helpers.Append16(ref data, 0xFFFF);
+                        Helpers.Append16(ref data, (ushort)(lastendframe));
+                        Helpers.Append16(ref data, (ushort)(textbox.StartFrame));
+                        Helpers.Append16(ref data, (ushort)(0xFFFF));
+                        Helpers.Append32(ref data, 0xFFFFFFFF);
+                        textboxcount++;
+                        
+                        Helpers.Append16(ref data, textbox.Message);
+                        Helpers.Append16(ref data, (ushort)(textbox.StartFrame));
+                        Helpers.Append16(ref data, (ushort)(textbox.StartFrame + textbox.Frames));
+                        Helpers.Append16(ref data, (ushort)(textbox.Type));
+                        Helpers.Append16(ref data, (ushort)(textbox.Type < 2 ? textbox.TopMessage : 0xFFFF));
+                        Helpers.Append16(ref data, (ushort)(textbox.Type < 2 ? textbox.BottomMessage : 0xFFFF));
+                        lastendframe = textbox.StartFrame + textbox.Frames;
+                    }
+                    Helpers.Overwrite16(ref data, textboxcountoffset, (ushort)(textboxcount));
+                }
+                else if ((Game == "OOT" && cutscene.Marker == 0x2D) || (Game == "MM" && cutscene.Marker == 0x98)) //transitions
+                {
+                    Helpers.Append32(ref data, (uint)cutscene.Marker);
+                    Helpers.Append32(ref data, 0x00000001);
+                    Helpers.Append16(ref data, cutscene.Data[0]);
+                    Helpers.Append16(ref data, cutscene.StartFrame);
+                    Helpers.Append16(ref data, cutscene.EndFrame);
+                    Helpers.Append16(ref data, cutscene.EndFrame);
+                }
+                else if ((Game == "OOT" && cutscene.Marker == 0x3E8) || (Game == "MM" && cutscene.Marker == 0x15E)) //asm
+                {
+                    Helpers.Append32(ref data, (uint)cutscene.Marker);
+                    Helpers.Append32(ref data, 0x00000001);
+                    Helpers.Append16(ref data, cutscene.Data[0]);
+                    Helpers.Append16(ref data, cutscene.StartFrame);
+                    Helpers.Append16(ref data, cutscene.EndFrame);
+                    Helpers.Append16(ref data, cutscene.EndFrame);
+                }
+                else if (Game == "OOT" && (cutscene.Marker == 0x8C)) //set time
+                {
+                    Helpers.Append32(ref data, (uint)cutscene.Marker);
+                    Helpers.Append32(ref data, 0x00000001);
+                    Helpers.Append16(ref data, 0x0000);
+                    Helpers.Append16(ref data, cutscene.StartFrame);
+                    Helpers.Append16(ref data, 0x0000);
+                    Helpers.Append16(ref data, (ushort)(cutscene.Data[0] << 8 | cutscene.Data[1]));
+                    Helpers.Append32(ref data, 0x00000000);
+                }
+                else if ((Game == "OOT" && cutscene.Marker == 0xC000)) //trigger exit
+                {
+                    Helpers.Append32(ref data, (uint)cutscene.Marker);
+                    Helpers.Append32(ref data, 0x00000001);
+                    Helpers.Append16(ref data, cutscene.Data[0]);
+                    Helpers.Append16(ref data, cutscene.StartFrame);
+                    Helpers.Append16(ref data, cutscene.StartFrame);
+                    
+                }
+                else if ((Game == "OOT" && cutscene.Marker == 0xC001)) //motion blur
+                {
+                    Helpers.Append32(ref data, (uint)cutscene.Marker);
+                    Helpers.Append32(ref data, 0x00000001);
+                    Helpers.Append16(ref data, cutscene.Data[0]);
+                    Helpers.Append16(ref data, cutscene.StartFrame);
+                    Helpers.Append16(ref data, cutscene.EndFrame);
+                }
+                else if ((Game == "OOT" && cutscene.Marker == 0xC002)) //play sound
+                {
+                    Helpers.Append32(ref data, (uint)cutscene.Marker);
+                    Helpers.Append32(ref data, 0x00000001);
+                    Helpers.Append16(ref data, cutscene.Data[0]); //SFX id
+                    Helpers.Append16(ref data, cutscene.StartFrame);
+                    Helpers.Append16(ref data, cutscene.EndFrame);
+                    byte type = (byte)(cutscene.Data[1] | (cutscene.Data[5] << 7));
+                    data.Add(type);
+                    data.Add((byte)cutscene.Data[2]); //reverb
+                    uint vol = Helpers.FloatToHex((cutscene.Data[3] / 100.0f));
+                    uint freq = Helpers.FloatToHex((cutscene.Data[4] / 100.0f));
+                    Helpers.Append32(ref data, vol); //vol
+                    Helpers.Append32(ref data, freq); //freq
+                    Helpers.Append16(ref data, 0); //range unused
+                    Helpers.Append16(ref data, 0); //X unused
+                    Helpers.Append16(ref data, 0); //Y unused
+                    Helpers.Append16(ref data, 0); //Z unused
+
+                }
+                else if ((Game == "OOT" && cutscene.Marker == 0xC003)) //set flag
+                {
+                    Helpers.Append32(ref data, (uint)cutscene.Marker);
+                    Helpers.Append32(ref data, 0x00000001);
+                    byte CmdFlag = (byte) (cutscene.Data[1] | (cutscene.Data[2] << 7));
+                    data.Add(CmdFlag);
+                    data.Add((byte)cutscene.Data[0]);
+                    Helpers.Append16(ref data, cutscene.StartFrame);
+                    Helpers.Append16(ref data, cutscene.StartFrame);
+
+                }
+                else if (cutscene.CutsceneActors.Count > 0)
+                {
+                    int actorframes = 0;
+                    Helpers.Append32(ref data, (uint)cutscene.Marker);
+                    Helpers.Append16(ref data, 0x0000);
+                    Helpers.Append16(ref data, (ushort)cutscene.CutsceneActors.Count);
+                    foreach (ZCutsceneActor actoraction in cutscene.CutsceneActors)
+                    {
+                        Helpers.Append16(ref data, actoraction.Animation);
+                        Helpers.Append16(ref data, (ushort)(cutscene.StartFrame + actorframes));
+                        Helpers.Append16(ref data, (ushort)(cutscene.StartFrame + actorframes + actoraction.Frames));
+                        Helpers.Append16(ref data, (ushort)(actoraction.Rotation.X));
+                        Helpers.Append16(ref data, (ushort)(actoraction.Rotation.Y));
+                        Helpers.Append16(ref data, (ushort)(actoraction.Rotation.Z));
+                        Helpers.Append32(ref data, (uint)(actoraction.Position.X));
+                        Helpers.Append32(ref data, (uint)(actoraction.Position.Y));
+                        Helpers.Append32(ref data, (uint)(actoraction.Position.Z));
+                        Helpers.Append32(ref data, (uint)(actoraction.Position2.X));
+                        Helpers.Append32(ref data, (uint)(actoraction.Position2.Y));
+                        Helpers.Append32(ref data, (uint)(actoraction.Position2.Z));
+                        //  Helpers.Append32(ref data, 0x3F800000); //vertex normal?
+                        //  Helpers.Append32(ref data, 0x3F800000); //vertex normal?
+                        // Helpers.Append32(ref data, 0x3F800000); //vertex normal?
+                        Helpers.Append32(ref data, 0x00000000); //vertex normal?
+                        Helpers.Append32(ref data, 0x00000000); //vertex normal?
+                        Helpers.Append32(ref data, 0x00000001); //vertex normal?
+                        actorframes += actoraction.Frames;
+                    }
+                }
+                AddPadding(ref data, 8);
+            }
+
+            Helpers.Append64(ref data, 0xFFFFFFFF00000000); // cutscene terminator
+
+            AddPadding(ref data, 8);
+            Helpers.Overwrite32(ref data, totalframesoffset, (uint)totalframes);
+
+            if (Game == "MM")
+            {
+                Cutscene = backupcutscene;
+            }
+        }
+
+        #region Collision
+
+        public void CalculateCollisionBounds()
+        {
+
+            List<ObjFile.Vertex> UsableVertex = new List<ObjFile.Vertex>();
+            MinCollisionBounds = new Vector3s(0, 0, 0);
+            MaxCollisionBounds = new Vector3s(0, 0, 0);
+
+            foreach (ObjFile.Group Group in ColModel.Groups)
+            foreach (ObjFile.Triangle Tri in Group.Triangles)
+            {
+                int[] ni = new int[3];
+                Vector3[] vtx = new Vector3[3];
+
+                for (int i = 0; i < 3; i++)
+                    vtx[i] = new Vector3(
+                        (int)ColModel.Vertices[Tri.VertIndex[i]].X,
+                        (int)ColModel.Vertices[Tri.VertIndex[i]].Y,
+                        (int)ColModel.Vertices[Tri.VertIndex[i]].Z);
+
+
+                Vector3 u = vtx[1] - vtx[0];
+                Vector3 v = vtx[2] - vtx[0];
+                Vector3 triWind;
+                triWind.X = (u.Y * v.Z) - (u.Z * v.Y);
+                triWind.Y = (u.Z * v.X) - (u.X * v.Z);
+                triWind.Z = (u.X * v.Y) - (u.Y * v.X);
+
+                Vector3 triNorm = Vector3.Normalize(triWind);
+                ni[0] = (int)Math.Round(triNorm.X * 0x7FFF);
+                ni[1] = (int)Math.Round(triNorm.Y * 0x7FFF);
+                ni[2] = (int)Math.Round(triNorm.Z * 0x7FFF);
+
+                bool skip = false;
+
+                if (ni[0] == 0 && ni[1] == 0 && ni[2] == 0)
+                {
+                    skip = true;
+                }
+
+                if (!Group.Name.ToLower().Contains("#blackplane") && !Group.Name.ToLower().Contains("#nocollision") && !Group.Name.ToLower().Contains("#door") && !skip)
+                {
+                        
+                    UsableVertex.Add(ColModel.Vertices[Tri.VertIndex[0]]);
+                    UsableVertex.Add(ColModel.Vertices[Tri.VertIndex[1]]);
+                    UsableVertex.Add(ColModel.Vertices[Tri.VertIndex[2]]);
+                        
+                   
+                }
+            }
+
+
+            foreach (ObjFile.Vertex Vtx in UsableVertex)
+            {
+                /* Minimum... */
+                MinCollisionBounds.X = (short)Math.Min(MinCollisionBounds.X, Vtx.X * Scale);
+                MinCollisionBounds.Y = (short)Math.Min(MinCollisionBounds.Y, Vtx.Y * Scale);
+                MinCollisionBounds.Z = (short)Math.Min(MinCollisionBounds.Z, Vtx.Z * Scale);
+
+                /* Maximum... */
+                MaxCollisionBounds.X = (short)Math.Max(MaxCollisionBounds.X, Vtx.X * Scale);
+                MaxCollisionBounds.Y = (short)Math.Max(MaxCollisionBounds.Y, Vtx.Y * Scale);
+                MaxCollisionBounds.Z = (short)Math.Max(MaxCollisionBounds.Z, Vtx.Z * Scale);
+
+            }
+
+            if (MainForm.settings.TriplicateCollisionBounds)
+            {
+                MinCollisionBounds.X = (short)MainForm.Clamp(MinCollisionBounds.X * 3, -32767, 32767);
+                MinCollisionBounds.Y = (short)MainForm.Clamp(MinCollisionBounds.Y * 3, -32767, 32767);
+                MinCollisionBounds.Z = (short)MainForm.Clamp(MinCollisionBounds.Z * 3, -32767, 32767);
+                MaxCollisionBounds.X = (short)MainForm.Clamp(MaxCollisionBounds.X * 3, -32767, 32767);
+                MaxCollisionBounds.Y = (short)MainForm.Clamp(MaxCollisionBounds.Y * 3, -32767, 32767);
+                MaxCollisionBounds.Z = (short)MainForm.Clamp(MaxCollisionBounds.Z * 3, -32767, 32767);
+            }
+
+#if DEBUG
+            if (MainForm.settings.TriplicateCollisionBounds && MainForm.CurrentScene.Name.Contains("DunGen"))
+            {
+                MinCollisionBounds.X = -15000;
+                MinCollisionBounds.Y = -1000;
+                MinCollisionBounds.Z = -15000;
+                MaxCollisionBounds.X = 15000;
+                MaxCollisionBounds.Y = 1000;
+                MaxCollisionBounds.Z = 15000;
+            }
+#endif
+        }
+
+        public void WriteSceneCollision(List<byte> Data, byte bank, bool zobj, string Game)
+        {
+            /* Fix scene header */
+            if (!zobj)
+            {
+                Helpers.Overwrite32(ref Data, CmdCollisionOffset + 4, (uint)(0x00000000 | bank << 24 | Data.Count));
+                CollisionOffset = Data.Count;
+            }
+
+            polytypetris = new Dictionary<int, List<ushort>>();
+
+
+            /* Prepare variables */
+            int CmdVertexArray = -1, CmdPolygonArray = -1, CmdPolygonTypes = -1, CmdWaterBoxes = -1;
+            int VertexArrayOffset = -1, PolygonArrayOffset = -1, PolygonTypesOffset = -1, WaterBoxesOffset = -1, CameraOffset = -1;
+
+            /* Write collision header */
+           
+            Helpers.Append16(ref Data, (ushort)Convert.ToInt16(MainForm.Clamp(MinCollisionBounds.X, -32768, 32767)));  /* Absolute minimum X/Y/Z */
+            Helpers.Append16(ref Data, (ushort)Convert.ToInt16(MainForm.Clamp(MinCollisionBounds.Y, -32768, 32767)));
+            Helpers.Append16(ref Data, (ushort)Convert.ToInt16(MainForm.Clamp(MinCollisionBounds.Z, -32768, 32767)));
+            Helpers.Append16(ref Data, (ushort)Convert.ToInt16(MainForm.Clamp(MaxCollisionBounds.X, -32768, 32767)));  /* Absolute maximum X/Y/Z */
+            Helpers.Append16(ref Data, (ushort)Convert.ToInt16(MainForm.Clamp(MaxCollisionBounds.Y, -32768, 32767)));
+            Helpers.Append16(ref Data, (ushort)Convert.ToInt16(MainForm.Clamp(MaxCollisionBounds.Z, -32768, 32767)));
+            CmdVertexArray = Data.Count;
+            Helpers.Append32(ref Data, 0x00000000);                                /* Vertex count */
+            Helpers.Append32(ref Data, 0x00000000);                                /* Vertex array offset */
+            CmdPolygonArray = Data.Count;
+            Helpers.Append32(ref Data, 0x00000000);                                /* Polygon count */
+            Helpers.Append32(ref Data, 0x00000000);                                /* Polygon array offset */
+            CmdPolygonTypes = Data.Count;
+            Helpers.Append32(ref Data, 0x00000000);                                /* Polygon type offset */
+            CameraOffset = Data.Count;
+            Helpers.Append32(ref Data, 0x00000000);                                /* Camera data offset */
+            CmdWaterBoxes = Data.Count;
+            Helpers.Append32(ref Data, 0x00000000);                                /* Waterbox count */
+            Helpers.Append32(ref Data, 0x00000000);                                /* Waterbox offset */
+
+            AddPadding(ref Data, 8);
+
+            /* Write vertex array & fix command */
+            VertexArrayOffset = Data.Count;
+            foreach (ObjFile.Vertex Vtx in ColModel.Vertices)
+            {
+                Helpers.Append16(ref Data, (ushort)Convert.ToInt16(MainForm.Clamp(Vtx.X * Scale, -32768, 32767)));
+                Helpers.Append16(ref Data, (ushort)Convert.ToInt16(MainForm.Clamp(Vtx.Y * Scale, -32768, 32767)));
+                Helpers.Append16(ref Data, (ushort)Convert.ToInt16(MainForm.Clamp(Vtx.Z * Scale, -32768, 32767)));
+            }
+            Helpers.Overwrite32(ref Data, CmdVertexArray, (uint)(ColModel.Vertices.Count << 16));
+            Helpers.Overwrite32(ref Data, CmdVertexArray + 4, (uint)(0x00000000 | bank << 24 | VertexArrayOffset));
+
+            AddPadding(ref Data, 8);
+
+            /* Write polygon array & fix command */
+            PolygonArrayOffset = Data.Count;
+            int TriangleTotal = 0;
+            ulong polytype;
+            ushort polyflags, polyflagsB;
+            ushort polytypeID = 0;
+            bool containsnonroomtag = false;
+ 
+            foreach (ObjFile.Group Group in ColModel.Groups)
+            {
+                Group.Name = Group.Name.Replace("TAG_", "#");
+                polytype = 0;
+                containsnonroomtag = Group.Name.ToLower().Replace("#room", "").Contains("#");
+                polyflags = (ushort) ((Group.Name.ToLower().Contains("#ignorecamera") ? 0x2000 : 0) + (Group.Name.ToLower().Contains("#ignoreactors") ? 0x4000 : 0) + (Group.Name.ToLower().Contains("#ignoreprojectiles") ? 0x8000 : 0));
+                polyflagsB = (ushort)(((Group.Name.ToLower().Contains("#speed") || Group.Name.ToLower().Contains("#direction")) && !Group.Name.ToLower().Contains("#waterstream") ? 0x2000 : 0));
+                if (Group.Name.ToLower().Contains("#polytype"))
+                {
+                    string polytypetag = Group.Name.ToLower();
+                    polytypetag = polytypetag.Substring(polytypetag.IndexOf("#polytype") + 9);
+                    polytypetag = polytypetag.Substring2(0, polytypetag.IndexOf('#'));
+
+                    int polytypenumber = 0;
+                    try
+                    {
+                        if (!Int32.TryParse(polytypetag, out polytypenumber) && !Int32.TryParse(polytypetag.Substring2(0,2), out polytypenumber))
+                        {
+                            MessageBox.Show("Bad usage of #Polytype tag, expected #PolytypeXX where XX is the ID", $"Error in {Group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            continue;
+                        }
+                    }
+                    catch (System.ArgumentOutOfRangeException)
+                    {
+                        MessageBox.Show("Bad usage of #Polytype tag, expected #PolytypeXX where XX is the ID", $"Error in {Group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        continue;
+                    }
+             
+                    polytypeID = (ushort)polytypenumber;
+                    while (polytypeID + 1 > MainForm.CurrentScene.PolyTypes.Count)
+                        MainForm.CurrentScene.PolyTypes.Add(new ZColPolyType(0));
+                }
+                else if (containsnonroomtag)
+                {
+                    if (Group.Name.ToLower().Contains("#raw"))
+                    {
+                        polytype = 0;
+                        if (!UInt64.TryParse(Group.Name.ToLower().Substring2(Group.Name.ToLower().IndexOf("#raw") + 4, 16), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out polytype))
+                        {
+                            MessageBox.Show("Bad usage of Raw tag. It should be #RawXXXXXXXXXXXXXXXX (XXXXXXXXXXXXXXX = polytype raw data in Hex) ", $"Error in {Group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            continue;
+                        }
+                   //     polytype = Convert.ToUInt64(Group.Name.Substring(Group.Name.IndexOf("#Raw") + 4, 16), 16);
+                    }
+                    else
+                    foreach (KeyValuePair<string, ulong> kp in MainForm.flaglist)
+                    {
+                        if (Group.Name.ToLower().Contains(kp.Key.ToLower()))
+                        {
+                            if (kp.Key == "#Exit")
+                            {
+                                int exitnum = 0;
+
+                                if (Group.Name.ToLower().Substring(Group.Name.ToLower().IndexOf("#exit")).Length < 7 || !Int32.TryParse(Group.Name.ToLower().Substring2(Group.Name.ToLower().IndexOf("#exit") + 5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out exitnum))
+                                {
+                                    if (!Int32.TryParse(Group.Name.ToLower().Substring2(Group.Name.ToLower().IndexOf("#exit") + 5, 1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out exitnum))
+                                    {
+                                        MessageBox.Show("Bad usage of Exit tag. It should be #ExitXX (XX = exit ID in hex) ", $"Error in {Group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                        continue;
+                                    }
+                                }
+                                exitnum++;
+                                polytype = (ulong)(polytype | ((ulong)exitnum << 40));
+                                while (exitnum > MainForm.CurrentScene.ExitList.Count)
+                                    MainForm.CurrentScene.ExitList.Add(new ZUShort(0));
+                            }
+                            else if (kp.Key == "#Camera")
+                            {
+                                int cameranum = 0;
+                                if (!Int32.TryParse(Group.Name.ToLower().Substring2(Group.Name.ToLower().IndexOf("#camera") + 7, 1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out cameranum))
+                                {
+                                    MessageBox.Show("Bad usage of Camera tag. It should be #CameraX (X = camera ID in hex) ", $"Error in {Group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    continue;
+                                }
+                                polytype = (ulong)(polytype | ((ulong)cameranum << 32));
+                                while (cameranum+1 > MainForm.CurrentScene.Cameras.Count)
+                                    MainForm.CurrentScene.Cameras.Add(new ZCamera(0, 0, 0, 0, 0, 0, 1, 45,0xFFFF,0xFFFF));
+                            }
+                            else if (kp.Key == "#Environment")
+                            {
+                                int envnum = 0;
+                                if (!Int32.TryParse(Group.Name.ToLower().Substring2(Group.Name.ToLower().IndexOf("#environment") + 12, 1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out envnum))
+                                {
+                                    MessageBox.Show("Bad usage of Environment tag. It should be #EnvironmentX (X = environment ID in hex) ", $"Error in {Group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    continue;
+                                }
+                             
+                                polytype = (ulong)(polytype | ((ulong)envnum << 8));
+                            }
+                            else if (kp.Key == "#IndoorEnv")
+                            {
+                                int envnum = 0;
+                                if (!Int32.TryParse(Group.Name.ToLower().Substring2(Group.Name.ToLower().IndexOf("#indoorenv") + 10, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out envnum))
+                                {
+                                    MessageBox.Show("Bad usage of Environment tag. It should be #IndoorEnvXX (XX = environment ID in hex) ", $"Error in {Group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    continue;
+                                }
+                             
+                                polytype = (ulong)(polytype | ((ulong)envnum << 6));
+                            }
+                            else if (kp.Key == "#Direction")
+                            {
+                                int dirnum = 0;
+                                if (!Int32.TryParse(Group.Name.ToLower().Substring2(Group.Name.ToLower().IndexOf("#direction") + 10, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out dirnum))
+                                {
+                                    MessageBox.Show("Bad usage of Direction tag. It should be #DirectionXX (XX = direction in hex) ", $"Error in {Group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    continue;
+                                }
+                    
+                                if (dirnum < 0x3F) polytype = (ulong)(polytype | ((ulong)dirnum << 21));
+                            }
+                            else if (kp.Key == "#Speed")
+                            {
+                                int spdnum = 0;
+                                if (!Int32.TryParse(Group.Name.ToLower().Substring2(Group.Name.ToLower().IndexOf("#speed") + 6, 1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out spdnum))
+                                {
+                                    MessageBox.Show("Bad usage of Speed tag. It should be #SpeedX (X = 1 slow, 2 mid, 3 fast, 4 preserves previous speed) ", $"Error in {Group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    continue;
+                                }
+
+                                if (spdnum < 8) polytype = (ulong)(polytype | ((ulong)spdnum << 18));
+                            }
+                            else if (kp.Key == "#Echo")
+                            {
+                                int echo = 0;
+                                if (!Int32.TryParse(Group.Name.ToLower().Substring2(Group.Name.ToLower().IndexOf("#echo") + 5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out echo))
+                                {
+                                    MessageBox.Show("Bad usage of Echo tag. It should be #EchoXX", $"Error in {Group.Name}", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    continue;
+                                }
+
+                                if (echo < 64) polytype = (ulong)(polytype | ((ulong)echo << 11));
+                            }
+                            else
+                                polytype = polytype | kp.Value;
+                        }
+                    }
+
+                    if (polytype != 0 || polyflags != 0 || containsnonroomtag)
+                    {
+
+                        int polyid = PolyTypes.FindIndex(x => x.Raw == polytype && x.PolyFlagA == polyflags && x.PolyFlagB == polyflagsB);
+                        if (polyid != -1)
+                            polytypeID = (ushort) polyid;
+                        else
+                        {
+                            PolyTypes.Add(new ZColPolyType(polytype, polyflags, polyflagsB));
+                            polytypeID = (ushort) (PolyTypes.Count - 1);
+                        }
+                    }
+                    else
+                        polytypeID = (ushort)Group.PolyType;
+
+                }
+                else polytypeID = (ushort)Group.PolyType;
+
+               // DebugConsole.WriteLine("Polytype assigned: " + polytypeID);
+               /*
+                if (MainForm.Is1April)
+                {
+                    foreach(ZColPolyType poly in PolyTypes)
+                    {
+                        poly.Raw = poly.Raw | 0x0000800000000000;
+                    }
+                }*/
+
+                foreach (ObjFile.Triangle Tri in Group.Triangles)
+                {
+                    int[] ni = new int[3];
+                    Vector3[] vtx = new Vector3[3];
+
+                    for (int i = 0; i < 3; i++)
+                        vtx[i] = new Vector3(
+                            (int)ColModel.Vertices[Tri.VertIndex[i]].X, 
+                            (int)ColModel.Vertices[Tri.VertIndex[i]].Y, 
+                            (int)ColModel.Vertices[Tri.VertIndex[i]].Z);
+                   
+
+                    Vector3 u = vtx[1] - vtx[0];
+                    Vector3 v = vtx[2] - vtx[0];
+                    Vector3 triWind;
+                    triWind.X = (u.Y * v.Z) - (u.Z * v.Y);
+                    triWind.Y = (u.Z * v.X) - (u.X * v.Z);
+                    triWind.Z = (u.X * v.Y) - (u.Y * v.X);
+
+                    Vector3 triNorm = Vector3.Normalize(triWind);
+                    ni[0] = (int)Math.Round(triNorm.X * 0x7FFF);
+                    ni[1] = (int)Math.Round(triNorm.Y * 0x7FFF);
+                    ni[2] = (int)Math.Round(triNorm.Z * 0x7FFF);
+
+                    // distance from origin
+                    int dn = (int)Math.Round(((triNorm.X * vtx[0].X) + (triNorm.Y * vtx[1].X) + (triNorm.Z * vtx[2].X)) * -1);
+                    if (dn < 0) dn += 0x10000;
+
+                    for (int i = 0; i < 3; i++)
+                        if (ni[i] < 0)
+                            ni[i] += 0x10000;
+
+                    bool skip = false;
+
+                    if (ni[0] == 0 && ni[1] == 0 && ni[2] == 0) {
+                        skip = true;
+                        /*
+                        DebugConsole.WriteLine("Skip Collision Triangle:");
+                        for (int i = 0; i < 3; i++)
+                        {
+                            DebugConsole.WriteLine( "Tri Vtx[" + i.ToString() + "] Pos: " + ColModel.Vertices[Tri.VertIndex[i]].X.ToString() + ", " +
+                                ColModel.Vertices[Tri.VertIndex[i]].Y.ToString() + ", " +
+                                ColModel.Vertices[Tri.VertIndex[i]].Z.ToString());
+                        }
+                        DebugConsole.WriteLine( "Tri Nrm: " + triNorm.X.ToString() + ", " +
+                            triNorm.Y.ToString() + ", " +
+                            triNorm.Z.ToString());*/
+                    }
+
+                    if (!Group.Name.ToLower().Contains("#blackplane") && !Group.Name.ToLower().Contains("#nocollision") && !Group.Name.ToLower().Contains("#door") && !skip)
+                    {
+                        Helpers.Append16(ref Data, polytypeID);    /* Polygon type */
+                        Helpers.Append16(ref Data, (ushort) ((ushort)Tri.VertIndex[0] | MainForm.CurrentScene.PolyTypes[polytypeID].PolyFlagA));  /* Index of vertex 1 */
+                        Helpers.Append16(ref Data, (ushort) ((ushort)Tri.VertIndex[1] | MainForm.CurrentScene.PolyTypes[polytypeID].PolyFlagB));  /* Index of vertex 2 */
+                        Helpers.Append16(ref Data, (ushort)Tri.VertIndex[2]);  /* Index of vertex 3 */
+                        Helpers.Append16(ref Data, (ushort)(ni[0] & 0xFFFF));                    /* Collision normals X/Y/Z */
+                        Helpers.Append16(ref Data, (ushort)(ni[1] & 0xFFFF));
+                        Helpers.Append16(ref Data, (ushort)(ni[2] & 0xFFFF));
+                        Helpers.Append16(ref Data, (ushort)(dn & 0xFFFF));                    /* Distance from origin */
+
+                        //dic used solely for the polytype swap tex anim
+                        if (!polytypetris.ContainsKey(polytypeID))
+                        {
+                            polytypetris.Add(polytypeID,new List<ushort>());
+                        }
+                        polytypetris[polytypeID].Add((ushort)TriangleTotal);
+
+                        TriangleTotal++;
+                    }
+                }
+
+            }
+            Helpers.Overwrite32(ref Data, CmdPolygonArray, (uint)(TriangleTotal << 16));
+            Helpers.Overwrite32(ref Data, CmdPolygonArray + 4, (uint)(0x00000000 | bank << 24 | PolygonArrayOffset));
+
+            FixCollision(ref Data, VertexArrayOffset, PolygonArrayOffset, TriangleTotal);
+
+            AddPadding(ref Data, 8);
+
+            /* Write polygon types & fix command */
+                PolygonTypesOffset = Data.Count;
+            foreach (ZColPolyType PT in PolyTypes)
+                Helpers.Append64(ref Data, PT.Raw);
+            Helpers.Overwrite32(ref Data, CmdPolygonTypes, (uint)(0x00000000 | bank << 24 | PolygonTypesOffset));
+
+            AddPadding(ref Data, 8);
+
+            /* Write waterboxes & fix command */
+            WaterBoxesOffset = Data.Count;
+            foreach (ZWaterbox WBox in Waterboxes)
+            {
+                Helpers.Append16(ref Data, (ushort)Convert.ToInt16(WBox.XPos));
+                Helpers.Append16(ref Data, (ushort)Convert.ToInt16(WBox.YPos));
+                Helpers.Append16(ref Data, (ushort)Convert.ToInt16(WBox.ZPos));
+                Helpers.Append16(ref Data, (ushort)Convert.ToInt16(WBox.XSize));
+                Helpers.Append16(ref Data, (ushort)Convert.ToInt16(WBox.ZSize));
+                Helpers.Append16(ref Data, 0x0000);
+                Helpers.Append32(ref Data, (uint)(WBox.Camera | (WBox.Env << 8) | (WBox.Room << 13)));
+
+            }
+            Helpers.Overwrite32(ref Data, CmdWaterBoxes, (uint)(Waterboxes.Count << 16));
+            Helpers.Overwrite32(ref Data, CmdWaterBoxes + 4, (uint)(0x00000000 | bank << 24 | WaterBoxesOffset));
+
+            AddPadding(ref Data, 8);
+
+
+            //camera
+
+           
+            Helpers.Overwrite32(ref Data, CameraOffset, (uint)(0x00000000 | bank << 24 | Data.Count));
+
+            if (Game == "MM")
+            {
+                Helpers.Overwrite32(ref Data, MMCmdCameraOffset + 12, (uint)(0x00000000 | bank << 24 | Data.Count)); 
+            }
+            
+            int incr2 = 0;
+
+            if (1 == 1) //Game == "OOT")
+            {
+
+                foreach (ZCamera camera in Cameras)
+                {
+                    Helpers.Append32(ref Data, (uint)(0x00000000 | (camera.Type << 16) | ((camera.Type == 0x1E ? 6 : 3)))); //camera type, camera count
+                    Helpers.Append32(ref Data, (uint)(0x00000000 | bank << 24 | (uint)Data.Count + 4 + ((Cameras.Count - 1 - incr2) * 8) + (18 * incr2)));
+                   // DebugConsole.WriteLine("" + (0x00000000 | bank << 24 | (uint)Data.Count + 4 + ((Cameras.Count - 1 - incr2) * 8) + (18 * incr2)).ToString("X8"));
+                    incr2++;
+                    if (camera.Type == 0x1E) incr2++;
+                }
+
+                foreach (ZCamera camera in Cameras)
+                {
+
+                    if (camera.Type == 0x1E && Game == "OOT")
+                    {
+                        if (MainForm.settings.SixPointCrawlSpace)
+                        {
+                            Helpers.Append16(ref Data, (ushort)camera.XPos);
+                            Helpers.Append16(ref Data, (ushort)camera.YPos);
+                            Helpers.Append16(ref Data, (ushort)camera.ZPos);
+                            Helpers.Append16(ref Data, (ushort)camera.XRot);
+                            Helpers.Append16(ref Data, (ushort)camera.YRot);
+                            Helpers.Append16(ref Data, (ushort)camera.ZRot);
+                            Helpers.Append16(ref Data, (ushort)camera.Fov);
+                            Helpers.Append16(ref Data, (ushort)camera.Unk1);
+                            Helpers.Append16(ref Data, (ushort)camera.Unk2);
+                            Helpers.Append16(ref Data, (ushort)camera.Unk12);
+                            Helpers.Append16(ref Data, (ushort)camera.Unk14);
+                            Helpers.Append16(ref Data, (ushort)camera.Unk16);
+                            Helpers.Append16(ref Data, (ushort)camera.Unk18);
+                            Helpers.Append16(ref Data, (ushort)camera.Unk1A);
+                            Helpers.Append16(ref Data, (ushort)camera.Unk1C);
+                            Helpers.Append16(ref Data, (ushort)camera.Unk1E);
+                            Helpers.Append16(ref Data, (ushort)camera.Unk20);
+                            Helpers.Append16(ref Data, (ushort)camera.Unk22);
+                        }
+                        else
+                        {
+                            Helpers.Append16(ref Data, (ushort)camera.XPos);
+                            Helpers.Append16(ref Data, (ushort)camera.YPos);
+                            Helpers.Append16(ref Data, (ushort)camera.ZPos);
+                            Helpers.Append16(ref Data, (ushort)camera.XPos);
+                            Helpers.Append16(ref Data, (ushort)camera.YPos);
+                            Helpers.Append16(ref Data, (ushort)camera.ZPos);
+                            Helpers.Append16(ref Data, (ushort)camera.XPos);
+                            Helpers.Append16(ref Data, (ushort)camera.YPos);
+                            Helpers.Append16(ref Data, (ushort)camera.ZPos);
+                            Helpers.Append16(ref Data, (ushort)camera.XRot);
+                            Helpers.Append16(ref Data, (ushort)camera.YRot);
+                            Helpers.Append16(ref Data, (ushort)camera.ZRot);
+                            Helpers.Append16(ref Data, (ushort)camera.XRot);
+                            Helpers.Append16(ref Data, (ushort)camera.YRot);
+                            Helpers.Append16(ref Data, (ushort)camera.ZRot);
+                            Helpers.Append16(ref Data, (ushort)camera.XRot);
+                            Helpers.Append16(ref Data, (ushort)camera.YRot);
+                            Helpers.Append16(ref Data, (ushort)camera.ZRot);
+                        }
+                    }
+                    else
+                    {
+                        Helpers.Append16(ref Data, (ushort)camera.XPos);
+                        Helpers.Append16(ref Data, (ushort)camera.YPos);
+                        Helpers.Append16(ref Data, (ushort)camera.ZPos);
+                        Helpers.Append16(ref Data, (ushort)camera.XRot);
+                        Helpers.Append16(ref Data, (ushort)camera.YRot);
+                        Helpers.Append16(ref Data, (ushort)camera.ZRot);
+                        Helpers.Append16(ref Data, (ushort)camera.Fov);
+                        Helpers.Append16(ref Data, (ushort)camera.Unk1);
+                        Helpers.Append16(ref Data, (ushort)camera.Unk2);
+                    }
+
+                    
+                }
+            }
+            else
+            {
+                    Helpers.Append32(ref Data, (uint)(0x003F0008)); 
+                    Helpers.Append32(ref Data, (uint)(0x08000000));
+                    Helpers.Append64(ref Data, 0x00);
+                    Helpers.Append64(ref Data, 0x00);
+            }
+
+           // DebugConsole.WriteLine("cam offset "   + CameraOffset);
+
+
+
+            /* Padding for good measure , before it was 0x800*/
+            AddPadding(ref Data, 0x10);
+        }
+
+        /* Algorithm by MN, implementation by JSA, C version by spinout: http://wiki.spinout182.com/w/Zelda_64:_Collision_Normals
+         * Fixed for good by DeathBasket: http://core.the-gcn.com/index.php?/topic/675-sharpocarina-zelda-oot-scene-development-system/page__view__findpost__p__11060
+         */
+        private void FixCollision(ref List<byte> Data, int VertOff, int TriOff, int TriCount)
+        {
+            int i, pos, end = TriOff + (TriCount << 4);
+            int v1, v2, v3, dn;
+            int[] p1 = new int[3], p2 = new int[3], p3 = new int[3], dx = new int[2], dy = new int[2], dz = new int[2], ni = new int[3];
+            float nd;
+            float[] nf = new float[3], uv = new float[3];
+            //for debug
+            int crashtris = 0;
+            int totaltris = 0;
+            int fixedtris = 0;
+
+            for (pos = TriOff; pos < end; pos += 0x10)
+            {
+                v1 = Helpers.Read16(Data, pos + 2) & 0x1FFF;
+                v2 = Helpers.Read16(Data, pos + 4) & 0x1FFF;
+                v3 = Helpers.Read16(Data, pos + 6) & 0x1FFF;
+
+                for (i = 0; i < 3; i++)
+                {
+                    p1[i] = Helpers.Read16S(Data, VertOff + (v1 * 0x6) + (i << 1));
+                    p2[i] = Helpers.Read16S(Data, VertOff + (v2 * 0x6) + (i << 1));
+                    p3[i] = Helpers.Read16S(Data, VertOff + (v3 * 0x6) + (i << 1));
+                }
+
+                dx[0] = p1[0] - p2[0]; dx[1] = p2[0] - p3[0];
+                dy[0] = p1[1] - p2[1]; dy[1] = p2[1] - p3[1];
+                dz[0] = p1[2] - p2[2]; dz[1] = p2[2] - p3[2];
+
+                nf[0] = (float)(dy[0] * dz[1]) - (dz[0] * dy[1]);
+                nf[1] = (float)(dz[0] * dx[1]) - (dx[0] * dz[1]);
+                nf[2] = (float)(dx[0] * dy[1]) - (dy[0] * dx[1]);
+
+                /* calculate length of normal vector */
+                nd = (float)Math.Sqrt((nf[0] * nf[0]) + (nf[1] * nf[1]) + (nf[2] * nf[2]));
+
+                for (i = 0; i < 3; i++)
+                {
+                    if (nd != 0)
+                        uv[i] = nf[i] / nd; /* uv being the unit normal vector */
+                    nf[i] = uv[i] * 0x7FFF;   /* nf being the way OoT uses it */
+                }
+
+                /* distance from origin... */
+                dn = (int)Math.Round(((uv[0] * p1[0]) + (uv[1] * p1[1]) + (uv[2] * p1[2])) * -1);
+
+                if (dn < 0)
+                    dn += 0x10000;
+                Helpers.Overwrite16(ref Data, pos + 0xE, (ushort)(dn & 0xFFFF));
+                for (i = 0; i < 3; i++)
+                {
+                    ni[i] = (int)Math.Round(nf[i]);
+                    if (ni[i] < 0)
+                        ni[i] += 0x10000;
+                    Helpers.Overwrite16(ref Data, (pos + 8 + (i << 1)), (ushort)(ni[i] & 0xFFFF));
+                }
+                double normalXZ = Math.Sqrt(ni[0] * ni[0] + ni[2] * ni[2]);
+                if (normalXZ == 0.0 && ni[1] < (0.5f * 32767.0f) && ni[1] > (-0.8f * 32767.0f))
+                {
+                    
+                    ni[1] = 32767;
+                    Helpers.Overwrite16(ref Data, (pos + 8 + (1 << 1)), (ushort)(ni[1] & 0xFFFF));
+                    fixedtris++;
+                }
+            }
+            if (fixedtris > 0)
+            {
+                DebugConsole.WriteLine("fixed tris:" + fixedtris);
+            }
+        }
+
+        #endregion
+
+        #region Header Writing/Fixing
+
+        private void WriteRoomHeader(ZRoom Room, ZScene MainHeader)
+        {
+            /* Write room header */
+            if (SceneHeaders.Count > 0)
+            {
+                CmdRoomAlternateSceneHeader = Room.RoomData.Count;
+                Helpers.Append64(ref Room.RoomData, 0x1800000000000000);                        /* Alternate Scene Headers */
+            }
+            else if (cloneid > 0)
+            {
+                MainHeader.SceneHeaders[MainHeader.SceneHeaders.FindIndex(x => x.Scene == this)]._RoomInjectOffsetValues[RoomIndex] = (uint)(0x03000000 | Room.RoomData.Count);
+                Helpers.Overwrite32(ref Room.RoomData, MainHeader.SceneHeaders[MainHeader.SceneHeaders.FindIndex(x => x.Scene == this)]._RoomInjectOffset[RoomIndex], (uint)(0x03000000 | Room.RoomData.Count));
+            }
+
+            Helpers.Append64(ref Room.RoomData, (ulong)(0x1600000000000000 | Room.Echo ));        /* Sound settings */
+            Helpers.Append64(ref Room.RoomData, (ulong)(0x0800000000000000 | ((ulong)Room.Restriction << 48)
+                | ((ulong)(Room.ShowInvisibleActors ? 1 : 0) << 8) | ((ulong)(Room.DisableWarpSongs ? 4 : 0) << 8) | (Room.IdleAnim)));        /* idle anims settings etc */
+            Helpers.Append64(ref Room.RoomData, (ulong)(0x1200000000000000 | ((ulong)(Room.DisableSkybox ? 1 : 0) << 24) | ((ulong)(Room.DisableSunMoon ? 1 : 0) << 16)));        /* Skybox modifier */
+
+            Helpers.Append64(ref Room.RoomData, (ulong)(0x1000000000000000 | ((ulong)(Room.StartTime != 0xFFFF ? Room.StartTime + 1 : Room.StartTime) << 16) | ((ulong)Room.TimeSpeed << 8)));  /* Time settings */
+
+            if (cloneid == 0)
+            {
+                CmdMeshHeaderOffset = Room.RoomData.Count;
+                Helpers.Append64(ref Room.RoomData, 0x0A00000000000000);        /* Mesh header */
+            }
+            else
+            {
+                Helpers.Append64(ref Room.RoomData, (ulong) (0x0A00000003000000 | CmdMeshHeaderOffset));        /* Mesh header */
+            }
+
+            /* Objects */
+            if ((Room.ZObjects.Count + this.ZObjects.Count) != 0)
+            {
+                CmdObjectOffset = Room.RoomData.Count;
+                Helpers.Append64(ref Room.RoomData, 0x0B00000000000000);
+            }
+
+            /* Actors */
+            if (Room.ZActors.Count != 0)
+            {
+                CmdActorOffset = Room.RoomData.Count;
+                Helpers.Append64(ref Room.RoomData, 0x0100000000000000);
+            }
+
+            if (Room.WindWest == 0 && Room.WindSouth == 0 && Room.WindStrength == 0 && Room.WindVertical == 0) { }
+            else
+            {
+            Helpers.Append64(ref Room.RoomData, (ulong)(0x0500000000000000 | (ulong)Room.WindWest << 24 | (ulong)Room.WindVertical << 16 
+                | (ulong)Room.WindSouth << 8 | (ulong)Room.WindStrength));        /* Wind settings */
+            }
+
+            /* Unused environments */
+            List<ZAdditionalLight> tempAdditionalLights = new List<ZAdditionalLight>();
+            tempAdditionalLights.AddRange(Room.AdditionalLights.FindAll(x => x.ColorC != Color.Black || x.Radius != 0 || !x.PointLight));
+            if (tempAdditionalLights.Count != 0)
+            {
+                CmdExtraLightOffset = Room.RoomData.Count;
+                Helpers.Append64(ref Room.RoomData, 0x0C00000000000000);
+            }
+            else if (Rooms.FindIndex(x => x.AdditionalLights.Count > 0) != -1) //if atleast one room has additional lights, write dummy header
+            {
+                Helpers.Append64(ref Room.RoomData, 0x0C00000000000000);
+            }
+
+        
+            Helpers.Append64(ref Room.RoomData, 0x1400000000000000 | (ulong)(Room.AffectedByPointLight ? 01 : 00) << 48);        /* End marker */
+
+            if (SceneHeaders.Count > 0)
+            {
+                Helpers.Overwrite32(ref Room.RoomData, CmdRoomAlternateSceneHeader + 4, (uint)(0x03000000 | Room.RoomData.Count));
+                foreach (ZSceneHeader SceneHeader in SceneHeaders)
+                {
+                    if (SceneHeader._RoomInjectOffset.Length < MainHeader.Rooms.Count)
+                    {
+                        SceneHeader._RoomInjectOffset = new int[MainHeader.Rooms.Count];
+                        SceneHeader._RoomInjectOffsetValues = new uint[MainHeader.Rooms.Count];
+                    }
+                    SceneHeader._RoomInjectOffset[RoomIndex] = Room.RoomData.Count;
+                    Helpers.Append32(ref Room.RoomData, 0x00000000); //placeholder
+                }
+                AddPadding(ref Room.RoomData, 8);
+            }
+        }
+
+        private bool PartialRefresh()
+        {
+            return (MainForm.n64preview && MainForm.RefreshRoom != -1);
+        }
+
+        private void FixRoomHeader(ZRoom Room)
+        {
+            /* Fix room header commands; mesh header... */
+            if (CmdMeshHeaderOffset != -1 && cloneid == 0)
+                Helpers.Overwrite32(ref Room.RoomData, CmdMeshHeaderOffset + 4, (uint)(0x03000000 | MeshHeaderOffset)); /* Mesh header */
+
+            if (!MainForm.n64preview)
+            {
+
+                /* ...object list... */
+                if ((Room.ZObjects.Count + this.ZObjects.Count) != 0 && CmdObjectOffset != -1)
+                {
+                    Helpers.Overwrite32(ref Room.RoomData, CmdObjectOffset, (uint)(0x0B000000 | ((Room.ZObjects.Count + this.ZObjects.Count) << 16))); /* Objects */
+                    Helpers.Overwrite32(ref Room.RoomData, CmdObjectOffset + 4, (uint)(0x03000000 | ObjectOffset));
+                }
+
+                /* ...actor list */
+                if (Room.ZActors.Count != 0 && CmdActorOffset != -1)
+                {
+                    Helpers.Overwrite32(ref Room.RoomData, CmdActorOffset, (uint)(0x01000000 | (Room.ZActors.Count << 16))); /* Actors */
+                    Helpers.Overwrite32(ref Room.RoomData, CmdActorOffset + 4, (uint)(0x03000000 | ActorOffset));
+                }
+
+                /* ...extralights list */
+                List<ZAdditionalLight> tempAdditionalLights = new List<ZAdditionalLight>();
+                tempAdditionalLights.AddRange(Room.AdditionalLights.FindAll(x => x.ColorC != Color.Black || x.Radius != 0 || !x.PointLight));
+                if (tempAdditionalLights.Count != 0 && CmdExtraLightOffset != -1)
+                {
+                    Helpers.Overwrite32(ref Room.RoomData, CmdExtraLightOffset, (uint)(0x0C000000 | (tempAdditionalLights.Count << 16))); /* additional lights */
+                    Helpers.Overwrite32(ref Room.RoomData, CmdExtraLightOffset + 4, (uint)(0x03000000 | ExtraLightOffset));
+                }
+
+            }
+
+
+            if (MeshHeaderOffset != -1 && cloneid == 0)
+            {
+                if (!PregeneratedMesh)
+                {
+
+                    List<NDisplayList> opaqueLists = Room.DLists.FindAll(DL => (DL.TintAlpha >> 24) == 255 && !Room.LODdlists.Contains(DL));
+                    List<NDisplayList> translucentLists = Room.DLists.FindAll(DL => (DL.TintAlpha >> 24) != 255 && !Room.LODdlists.Contains(DL));
+
+                    opaqueLists = new List<NDisplayList>(opaqueLists.OrderBy(x => x.RenderLast == false));
+                    translucentLists = new List<NDisplayList>(translucentLists.OrderBy(x => x.RenderLast == false));
+
+                    foreach (LODgroup group in Room.LODgroups)
+                    {
+                        NDisplayList dummy = new NDisplayList();
+                        dummy.Offset = group.lodgroupoffset;
+                        translucentLists.Add(dummy);
+                    }
+
+
+                    int numEntries = Math.Max(opaqueLists.Count, translucentLists.Count);
+
+                    if (!Prerendered)
+                    {
+                        if (!Room.Type2)
+                        {
+                            //Type 0
+                            Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, (uint)(0x00000000 | (numEntries << 16)));
+                            Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset + 4, (uint)(0x03000000 | MeshHeaderOffset + 12));
+                            Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset + 8, (uint)(0x03000000 | (MeshHeaderOffset + 12) + (numEntries * 8)));
+                        }
+                        else
+                        {
+                            //Type 2
+                            Type2MeshHeaderOffset = MeshHeaderOffset;
+                        }
+                        MeshHeaderOffset += 12;
+                    }
+                    else
+                    {
+                        //Type 1
+                        MeshHeaderOffset += 32;
+                    }
+
+
+                    if (!Prerendered)
+                    {
+                        if (!Room.Type2)
+                        {
+                            //Type 0
+                            for (int i = 0; i < numEntries; i++)
+                            {
+                                if (i < opaqueLists.Count)
+                                    Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, (uint)(0x03000000 | opaqueLists[i].Offset));
+                                else
+                                    Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, 0);
+
+                                MeshHeaderOffset += 4;
+
+                                if (i < translucentLists.Count)
+                                    Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, (uint)(0x03000000 | translucentLists[i].Offset));
+                                else
+                                    Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, 0);
+
+                                MeshHeaderOffset += 4;
+                            }
+                        }
+                        else
+                        {
+                            //Type 2
+
+                            int Type2Entries = 0;
+
+                            for (int i = 0; i < Room.Type2Groups.Count; i++)
+                            {
+                                double minX = Room.Type2Groups[i].DisplayLists.Min(x => x.MinCoordinate.X);
+                                double minY = Room.Type2Groups[i].DisplayLists.Min(x => x.MinCoordinate.Y);
+                                double minZ = Room.Type2Groups[i].DisplayLists.Min(x => x.MinCoordinate.Z);
+                                double maxX = Room.Type2Groups[i].DisplayLists.Max(x => x.MaxCoordinate.X);
+                                double maxY = Room.Type2Groups[i].DisplayLists.Max(x => x.MaxCoordinate.Y);
+                                double maxZ = Room.Type2Groups[i].DisplayLists.Max(x => x.MaxCoordinate.Z);
+                                ushort midX = (ushort)(minX + ((maxX - minX) / 2));
+                                ushort midY = (ushort)(minY + ((maxY - minY) / 2));
+                                ushort midZ = (ushort)(minZ + ((maxZ - minZ) / 2));
+
+                                var diagonal = new Vector3d(maxX, maxY, maxZ) - new Vector3d(minX, minY, minZ);
+                                ushort radius = (ushort)((diagonal.Length / 2.0) + 1);
+
+                                List<NDisplayList> opaLists = Room.Type2Groups[i].DisplayLists.FindAll(DL => (DL.TintAlpha >> 24) == 255 && !Room.LODdlists.Contains(DL));
+                                List<NDisplayList> xluLists = Room.Type2Groups[i].DisplayLists.FindAll(DL => (DL.TintAlpha >> 24) != 255 && !Room.LODdlists.Contains(DL));
+
+                                uint opaoffset = 0;
+                                uint xluoffset = 0;
+                                if (opaLists.Count != 0)
+                                {
+                                    opaoffset = (uint)Room.RoomData.Count;
+                                    for (int y = 0; y < opaLists.Count; y++)
+                                    {
+                                        Helpers.Append32(ref Room.RoomData, 0xDE000000);
+                                        Helpers.Append32(ref Room.RoomData, (uint)(0x03000000 | opaLists[y].Offset));
+                                    }
+                                    Helpers.Append64(ref Room.RoomData, 0xDF00000000000000);
+                                }
+                                if (xluLists.Count != 0)
+                                {
+                                    xluoffset = (uint)Room.RoomData.Count;
+                                    for (int y = 0; y < xluLists.Count; y++)
+                                    {
+                                        Helpers.Append32(ref Room.RoomData, 0xDE000000);
+                                        Helpers.Append32(ref Room.RoomData, (uint)(0x03000000 | xluLists[y].Offset));
+                                    }
+                                    Helpers.Append64(ref Room.RoomData, 0xDF00000000000000);
+                                }
+
+
+                                Helpers.Overwrite16(ref Room.RoomData, MeshHeaderOffset, midX); //X
+                                Helpers.Overwrite16(ref Room.RoomData, MeshHeaderOffset + 2, midY); //Y
+                                Helpers.Overwrite16(ref Room.RoomData, MeshHeaderOffset + 4, midZ); //Z
+                                Helpers.Overwrite16(ref Room.RoomData, MeshHeaderOffset + 6, radius); //bounding sphere radius
+                                Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset + 8, opaoffset == 0 ? 0 : (uint)(0x03000000 | opaoffset));
+                                Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset + 12, xluoffset == 0 ? 0 : (uint)(0x03000000 | xluoffset));
+                                MeshHeaderOffset += 16;
+                                Type2Entries++;
+                            }
+                            for (int i = 0; i < opaqueLists.Count; i++)
+                            {
+                                if (opaqueLists[i].Type2Group == -1)
+                                {
+                                    ushort midX = (ushort)(opaqueLists[i].MinCoordinate.X + ((opaqueLists[i].MaxCoordinate.X - opaqueLists[i].MinCoordinate.X) / 2));
+                                    ushort midY = (ushort)(opaqueLists[i].MinCoordinate.Y + ((opaqueLists[i].MaxCoordinate.Y - opaqueLists[i].MinCoordinate.Y) / 2));
+                                    ushort midZ = (ushort)(opaqueLists[i].MinCoordinate.Z + ((opaqueLists[i].MaxCoordinate.Z - opaqueLists[i].MinCoordinate.Z) / 2));
+
+                                    var diagonal = opaqueLists[i].MaxCoordinate - opaqueLists[i].MinCoordinate;
+                                    ushort radius = (ushort)((diagonal.Length / 2.0) + 1);
+
+                                    Helpers.Overwrite16(ref Room.RoomData, MeshHeaderOffset, midX); //X
+                                    Helpers.Overwrite16(ref Room.RoomData, MeshHeaderOffset + 2, midY); //Y
+                                    Helpers.Overwrite16(ref Room.RoomData, MeshHeaderOffset + 4, midZ); //Z
+                                    Helpers.Overwrite16(ref Room.RoomData, MeshHeaderOffset + 6, radius); //bounding sphere radius
+                                    Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset + 8, (uint)(0x03000000 | opaqueLists[i].Offset));
+                                    Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset + 12, 0);
+                                    MeshHeaderOffset += 16;
+                                    Type2Entries++;
+                                }
+                            }
+                            for (int i = 0; i < translucentLists.Count; i++)
+                            {
+                                if (translucentLists[i].Type2Group == -1)
+                                {
+                                    ushort midX = (ushort)(translucentLists[i].MinCoordinate.X + ((translucentLists[i].MaxCoordinate.X - translucentLists[i].MinCoordinate.X) / 2));
+                                    ushort midY = (ushort)(translucentLists[i].MinCoordinate.Y + ((translucentLists[i].MaxCoordinate.Y - translucentLists[i].MinCoordinate.Y) / 2));
+                                    ushort midZ = (ushort)(translucentLists[i].MinCoordinate.Z + ((translucentLists[i].MaxCoordinate.Z - translucentLists[i].MinCoordinate.Z) / 2));
+
+                                    var diagonal = translucentLists[i].MaxCoordinate - translucentLists[i].MinCoordinate;
+                                    ushort radius = (ushort)((diagonal.Length / 2.0) + 1);
+
+                                    Helpers.Overwrite16(ref Room.RoomData, MeshHeaderOffset, midX); //X
+                                    Helpers.Overwrite16(ref Room.RoomData, MeshHeaderOffset + 2, midY); //Y
+                                    Helpers.Overwrite16(ref Room.RoomData, MeshHeaderOffset + 4, midZ); //Z
+                                    Helpers.Overwrite16(ref Room.RoomData, MeshHeaderOffset + 6, radius); //bounding sphere radius
+                                    Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset + 8, 0);
+                                    Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset + 12, (uint)(0x03000000 | translucentLists[i].Offset));
+                                    MeshHeaderOffset += 16;
+                                    Type2Entries++;
+                                }
+                            }
+
+                            if (Type2Entries > 64)
+                            {
+                                MessageBox.Show($"Your room has {Type2Entries} DList groups while only a maximum of 64 are allowed on Type2 Rooms (DList groups require SharpOcarina export 1.1.5, update it via Help tab if needed)", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                return;
+                            }
+
+
+                            Helpers.Overwrite32(ref Room.RoomData, Type2MeshHeaderOffset, (uint)(0x02000000 | ((Type2Entries) << 16)));
+                            Helpers.Overwrite32(ref Room.RoomData, Type2MeshHeaderOffset + 4, (uint)(0x03000000 | Type2MeshHeaderOffset + 12));
+                            Helpers.Overwrite32(ref Room.RoomData, Type2MeshHeaderOffset + 8, (uint)(0x03000000 | (Type2MeshHeaderOffset + 12) + ((Type2Entries) * 16)));
+                        }
+                    }
+
+                }
+                else
+                {
+                    // TODO pregenerated mesh
+
+                  
+
+                    byte meshtype = Room.OriginalRoomData[Room.OriginalMeshHeaderOffset];
+
+                    if (meshtype != 1)
+                    {
+
+                        int numEntries = Helpers.Read16(Room.OriginalRoomData, Room.OriginalMeshHeaderOffset) & 0x00FF;
+                        uint originalmeshoffset = Helpers.Read32(Room.OriginalRoomData, Room.OriginalMeshHeaderOffset + 4) & 0x00FFFFFF;
+
+
+                        Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, (uint)(0x00000000 | (numEntries << 16) | (meshtype << 24)));
+                        Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset + 4, (uint)(0x03000000 | MeshHeaderOffset + 12));
+                        Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset + 8, (uint)(0x03000000 | (MeshHeaderOffset + 12) + (numEntries * (new int[] { 8, 8, 16 }[meshtype]))));
+                        MeshHeaderOffset += 12;
+
+                        for (int i = 0; i < numEntries; i++)
+                        {
+                            // we copy the old mesh offset
+
+                            if (meshtype == 0)
+                            {
+                                uint dlistoffset1 = Helpers.Read32(Room.OriginalRoomData, (int)originalmeshoffset + (8 * i)) & 0x00FFFFFF;
+                                uint dlistoffset2 = Helpers.Read32(Room.OriginalRoomData, (int)originalmeshoffset + 4 + (8 * i)) & 0x00FFFFFF;
+                                dlistoffset1 = dlistoffset1 - Room.oldoffset + Room.newoffset;
+                                dlistoffset2 = dlistoffset2 - Room.oldoffset + Room.newoffset;
+
+                                Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, (uint)(0x03000000 | dlistoffset1));
+                                MeshHeaderOffset += 4;
+                                Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, (uint)(0x03000000 | dlistoffset2));
+                                MeshHeaderOffset += 4;
+                            }
+                            else if (meshtype == 2)
+                            {
+                                uint data1 = Helpers.Read32(Room.OriginalRoomData, (int)originalmeshoffset + 0 + (16 * i)); // X Y 
+                                uint data2 = Helpers.Read32(Room.OriginalRoomData, (int)originalmeshoffset + 4 + (16 * i)); // Z dist
+
+                                uint dlistoffset1 = Helpers.Read32(Room.OriginalRoomData, (int)originalmeshoffset + 8 + (16 * i));
+                                uint dlistoffset2 = Helpers.Read32(Room.OriginalRoomData, (int)originalmeshoffset + 12 + (16 * i));
+
+                                if ((dlistoffset1 & 0xFF000000) >> 24 != 0)
+                                    dlistoffset1 = (dlistoffset1 & 0x00FFFFFF) - Room.oldoffset + Room.newoffset;
+                                if ((dlistoffset2 & 0xFF000000) >> 24 != 0)
+                                    dlistoffset2 = (dlistoffset2 & 0x00FFFFFF) - Room.oldoffset + Room.newoffset;
+
+
+                                Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, data1);
+                                MeshHeaderOffset += 4;
+                                Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, data2);
+                                MeshHeaderOffset += 4;
+                                Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, dlistoffset1 == 0 ? 0 : (uint)(0x03000000 | dlistoffset1));
+                                MeshHeaderOffset += 4;
+                                Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, dlistoffset2 == 0 ? 0 : (uint)(0x03000000 | dlistoffset2));
+                                MeshHeaderOffset += 4;
+                            }
+                        }
+                    }
+                    else
+                    {
+
+
+                        uint originalmeshoffset = Helpers.Read32(Room.OriginalRoomData, Room.OriginalMeshHeaderOffset + 4) & 0x00FFFFFF;
+
+
+                        Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, (uint)(0x00000000 | ((prerenderimages.Count == 1 ? 0x01 : 0x02) << 16) | (meshtype << 24)));
+                        Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset + 4, (uint)(0x03000000 | MeshHeaderOffset + 12));
+                        MeshHeaderOffset += 12;
+                        /*
+                        uint dlistoffset1 = Helpers.Read32(Room.OriginalRoomData, (int)originalmeshoffset + (8 * i)) & 0x00FFFFFF;
+                        dlistoffset1 = dlistoffset1 - Room.oldoffset + Room.newoffset;
+
+                        Helpers.Overwrite32(ref Room.RoomData, MeshHeaderOffset, (uint)(0x03000000 | dlistoffset1));
+                        MeshHeaderOffset += 4;*/
+                    }
+                        
+                    }
+                }
+
+            
+
+        }
+
+        #endregion
+
+        #endregion
+        
+        public Limb[] GetHierarchies(List<byte> Data, byte Bank)
+        {
+            try
+            {
+                int tOffset = 0;
+                byte tBank = 0;
+                int tCnt = 0;
+                int j = 0;
+                for (int i = 0; (i
+                            <= (Data.Count - 8)); i = (i + 4))
+                {
+                    if (((Data[i] == Bank)
+                                && (Data[i + 4] > 0)))
+                    {
+                        tBank = Data[i];
+                        tCnt = Data[i + 4];
+                        tOffset = Helpers.Read24S(Data, (i + 1));
+                        if ((tOffset
+                                    < (Data.Count - 16)))
+                        {
+                            for (j = tOffset; (j
+                                        <= (tOffset
+                                        + ((tCnt * 4)
+                                        - 1))); j = (j + 4))
+                            {
+                                if ((Data[j] != tBank))
+                                {
+                                    break;
+                                }
+
+                            }
+
+                            if ((i == j))
+                            {
+                                Limb[] tmpHierarchy = new Limb[tCnt];
+                                int tmpLimbOff = 0;
+                                for (int k = 0; (k
+                                            <= (tCnt - 1)); k++)
+                                {
+                                    tmpHierarchy[k] = new Limb();
+                                    tmpLimbOff =  Helpers.Read24S(Data, (tOffset + 1));
+                                    int DisplayList = 0;
+                                    // With...
+                                    if ((Data[(int) (tmpLimbOff + 8)] == Bank))
+                                    {
+                                        DisplayList = Helpers.Read24S(Data, (tmpLimbOff + 9));
+                                        tmpHierarchy[k].firstchild = (sbyte) Data[tmpLimbOff + 7];
+                                        tmpHierarchy[k].z = (sbyte)Data[tmpLimbOff + 7];
+                                        tmpHierarchy[k].y = (sbyte)Data[tmpLimbOff + 7];
+                                        tmpHierarchy[k].x = (sbyte)Data[tmpLimbOff + 7];
+                                        //  N64DList(N64DList.Length);
+                                        // ReadInDL(Data, N64DList, ., DisplayList, (N64DList.Length - 1));
+                                    }
+                                    else
+                                    {
+                                        DisplayList = 0;
+                                    }
+
+                                    // If Data(tmpLimbOff + 12) = Bank Then
+                                    //     .DisplayListLow = ReadUInt24(Data, tmpLimbOff + 13)
+                                    //     ReDim Preserve N64DList(N64DList.Length)
+                                    //     ReadInDL(Data, N64DList, .DisplayListLow, N64DList.Length - 1)
+                                    // Else
+
+                                    tOffset += 4;
+                                }
+
+                                return tmpHierarchy;
+                            }
+
+                        }
+
+                    }
+
+                }
+
+                return null;
+            }
+            catch (Exception err)
+            {
+                return null;
+            }
+
+        }
+
+        public class RGBA8 {
+            public int r, g, b, a;
+
+            public int getIndex(int index) {
+                switch (index) {
+                    case 0: return r;
+                    case 1: return g;
+                    case 2: return b;
+                    case 3: return a;
+                    default: return -1;
+                }
+            }
+
+            public void setIndex(int index, int color) {
+                switch (index) {
+                    case 0: r = color; break;
+                    case 1: g = color; break;
+                    case 2: b = color; break;
+                    case 3: a = color; break;
+                    default: 
+                        break;
+                }
+            }
+
+            public RGBA8(int _r, int _g, int _b, int _a) {
+                r = _r;
+                g = _g;
+                b = _b;
+                a = _a;
+            }
+
+            public RGBA8(int _r, int _g, int _b) {
+                r = _r;
+                g = _g;
+                b = _b;
+                a = 0xFF;
+            }
+
+            public RGBA8(int mono) {
+                r = g = b = a = mono;
+            }
+        }
+
+        public class ZObjRender
+        {
+            public UInt16 actor = 0x00;
+            public string variableregex = "....";
+            public float scale = 1.0f;
+            public short Yoff = 0;
+            public List<SayakaGL.UcodeSimulator.DisplayListStruct> DLists = new List<UcodeSimulator.DisplayListStruct>();
+            public List<Limb> Limbs = new List<Limb>();
+            public RGBA8 envColor = new RGBA8(0);
+            public RGBA8 primColor = new RGBA8(0);
+            public bool useColor;
+            public ushort ScaleMask;
+            public string ScaleTarget;
+            public float[] ScaleArray = new float[0];
+            public ushort ScalePosition = 0;
+            public ushort ColorMask;
+            public string ColorTarget;
+            public ushort ColorPosition = 0;
+            public RGBA8[] EnvColorArray = new RGBA8[0];
+            public RGBA8[] PrimColorArray = new RGBA8[0];
+            public short RotY;
+            public bool[] IgnoreRot = {false,false,false};
+            public ObjFile collision = null;
+
+            public ZObjRender(UInt16 actor, string var, float scale)
+            {
+                this.actor = actor;
+                this.variableregex = var;
+                this.scale = scale;
+            }
+
+            public ZObjRender(UInt16 actor, string var, float scale, List<SayakaGL.UcodeSimulator.DisplayListStruct> DLists, List<Limb> Limbs)
+            {
+                this.actor = actor;
+                this.variableregex = var;
+                this.scale = scale;
+                this.DLists = DLists;
+                this.Limbs = Limbs;
+            }
+        }
+
+        public struct Limb
+        {
+
+            public short x;
+            public short y;
+            public short z;
+            public SByte firstchild;
+            public SByte nextchild;
+            public SByte parent; //Added to make things easier
+            public Vector3 rotation;
+            public List<SayakaGL.UcodeSimulator.DisplayListStruct> DList;
+
+
+        }
+
+        public ZScene Clone()
+        {
+            ZScene clone = (ZScene)this.MemberwiseClone();
+            clone.Rooms = Rooms.ConvertAll(x => (x.Clone()));
+            clone.ZObjects = ZObjects == null ? new List<ZUShort>() : ZObjects.ConvertAll(x => x == null ? null : x.Clone());
+            clone.Pathways = Pathways.ConvertAll(x => (x.Clone()));
+            clone.Environments = Environments.ConvertAll(x => (x.Clone()));
+            clone.Waterboxes = Waterboxes.ConvertAll(x => (x.Clone()));
+            clone.PolyTypes = PolyTypes.ConvertAll(x => (x.Clone()));
+            clone.ExitList = ExitList.ConvertAll(x => x == null ? null : x.Clone());
+            clone.ExitListV2 = ExitListV2.ConvertAll(x => (x.Clone()));
+            clone.SpawnPoints = SpawnPoints.ConvertAll(x => (x.Clone()));
+            clone.Transitions = Transitions.ConvertAll(x => (x.Clone()));
+            clone.Cutscene = Cutscene == null ? new List<ZCutscene>() : Cutscene.ConvertAll(x => x == null ? null : x.Clone());
+            clone.SceneHeaders = new List<ZSceneHeader>();
+            clone.SegmentFunctions = SegmentFunctions == null
+                ? new List<ZSegmentFunction>()
+                : SegmentFunctions.Select(x => x == null ? null : new ZSegmentFunction
+                {
+                    Functions = x.Functions == null ? new List<ZTextureAnim>() : x.Functions.ConvertAll(animation => animation == null ? null : animation.Clone())
+                }).ToList();
+            clone.prerenderimages = prerenderimages == null ? new List<string>() : new List<string>(prerenderimages);
+            clone.Cameras = Cameras.ConvertAll(x => (x.Clone()));
+            clone.AdditionalTextures = AdditionalTextures == null ? new List<ObjFile.Material>() : AdditionalTextures.ConvertAll(x => x == null ? null : x.Clone());
+            clone.TextureAnims = TextureAnims == null ? new List<ZTextureAnim>() : TextureAnims.ConvertAll(x => x == null ? null : x.Clone());
+            clone.ActorCutscenes = ActorCutscenes == null ? new List<ZActorCutscene>() : ActorCutscenes.ConvertAll(x => x == null ? null : x.Clone());
+            clone.CollisionSubdivisions = CollisionSubdivisions == null ? null : (byte[])CollisionSubdivisions.Clone();
+            clone.OriginalSceneData = OriginalSceneData == null ? null : new List<byte>(OriginalSceneData);
+            clone.SwitchFlagNames = SwitchFlagNames == null ? new Dictionary<int, string>() : new Dictionary<int, string>(SwitchFlagNames);
+            clone.TileSockets = TileSockets == null
+                ? new List<TileSocket>()
+                : TileSockets.Select(socket => socket == null ? null : socket.Clone()).ToList();
+            clone.SandboxGameplayPackages = SandboxGameplayPackages == null
+                ? new List<RoomPackage>()
+                : SandboxGameplayPackages
+                    .Where(package => package != null)
+                    .Select(package => TileStorage.Clone(package))
+                    .ToList();
+            
+
+
+            return clone;
+
+        }
+
+        public class DMAFile
+        {
+            public uint startoffset = 0;
+            public uint endoffset = 0;
+            public string name = "";
+        }
+
+        public class LODgroup
+        {
+            public int id = 0;
+            public uint lodgroupoffset = 0;
+            public List<LODgroupDlist> dlists = new List<LODgroupDlist>();
+
+            public LODgroup(int id)
+            {
+                this.id = id;
+             //   this.lodgroupoffset = lodgroupoffset;
+            }
+            
+
+
+
+        }
+
+        public class LODgroupDlist
+        {
+            public NDisplayList dlist;
+            public int distance;
+            public int X;
+            public int Y;
+            public int Z;
+
+            public LODgroupDlist(NDisplayList dlist, int distance)
+            {
+                this.dlist = dlist;
+                this.distance = distance;
+            }
+
+        }
+
+        public struct Vector3s
+        {
+            public short X;
+            public short Y;
+            public short Z;
+
+            public Vector3s(short x, short y, short z)
+            {
+                X = x;
+                Y = y;
+                Z = z;
+            }
+
+            public Vector3s Clone()
+            {
+                return this;
+            }
+
+            public override string ToString()
+            {
+                return $"({X}, {Y}, {Z})";
+            }
+
+            public static explicit operator Vector3(Vector3s v)
+            {
+                return new Vector3(v.X, v.Y, v.Z);
+            }
+        }
+
+        public struct Vector3b
+        {
+            public byte X;
+            public byte Y;
+            public byte Z;
+
+            public Vector3b(byte x, byte y, byte z)
+            {
+                X = x;
+                Y = y;
+                Z = z;
+            }
+
+            public Vector3b Clone()
+            {
+                return this;
+            }
+
+            public override string ToString()
+            {
+                return $"({X}, {Y}, {Z})";
+            }
+        }
+
+
+    }
+}

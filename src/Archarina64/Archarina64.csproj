@@ -1,0 +1,866 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\packages\Obfuscar.2.2.28\build\obfuscar.props" Condition="Exists('..\packages\Obfuscar.2.2.28\build\obfuscar.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{6B8B0D9A-7C7C-4E9B-BF83-9E0F6A2DCE45}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>SharpOcarina</RootNamespace>
+    <AssemblyName>Archarina64</AssemblyName>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
+    <FileAlignment>512</FileAlignment>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <PublishUrl>publicar\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <PlatformTarget>x86</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <PlatformTarget>x86</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>Archarina64.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SharedEditor\SharedEditor.csproj">
+      <Project>{7E6D6F8A-2C45-4F89-BE4D-6C521C3C8E2A}</Project>
+      <Name>SharpOcarina.Shared</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Archarina64.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\Archarina64.png" />
+    <Content Include="Resources\ModelerIcons\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Reference Include="ExtendedXmlSerializer, Version=2.1.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\ExtendedXmlSerializer.2.1.3\lib\net45\ExtendedXmlSerializer.dll</HintPath>
+    </Reference>
+    <Reference Include="Ionic.Zip.Reduced">
+      <HintPath>.\Ionic.Zip.Reduced.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.QualityTools.Testing.Fakes, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="OpenTK, Version=3.3.3.0, Culture=neutral, PublicKeyToken=bad199fe84eb3df4, processorArchitecture=MSIL">
+      <HintPath>packages\OpenTK.3.3.3\lib\net20\OpenTK.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenTK.GLControl, Version=3.3.3.0, Culture=neutral, PublicKeyToken=bad199fe84eb3df4, processorArchitecture=MSIL">
+      <HintPath>packages\OpenTK.GLControl.3.3.3\lib\net20\OpenTK.GLControl.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Collections.Immutable, Version=1.2.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Collections.Immutable.1.4.0\lib\portable-net45+win8+wp8+wpa81\System.Collections.Immutable.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Core" />
+    <Reference Include="System.Interactive, Version=3.0.1000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
+      <HintPath>packages\System.Interactive.3.1.1\lib\net45\System.Interactive.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Windows.Forms.DataVisualization" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="Tommy, Version=3.1.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Tommy.3.1.2\lib\net35\Tommy.dll</HintPath>
+    </Reference>
+    <Reference Include="windowsBase" />
+    <Reference Include="ZeldaMsgPreview">
+      <HintPath>ZeldaMsgPreview.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ArcharinaWorkspace.cs" />
+    <Compile Include="ArcharinaSceneDocument.cs" />
+    <Compile Include="RoomPackageSharedAdapter.cs" />
+    <Compile Include="ArcharinaEditorHost.cs" />
+    <Compile Include="ArcharinaSceneHandoffAdapter.cs" />
+    <Compile Include="SharedSceneHandoffWorkspace.cs" />
+    <Compile Include="SceneBuilder.cs" />
+    <Compile Include="SceneNames.cs" />
+    <Compile Include="SandboxWorkspace.cs" />
+    <Compile Include="SandboxAuthoringMarker.cs" />
+    <Compile Include="SandboxActorQuickActions.cs" />
+    <Compile Include="SandboxCommandPalette.cs" />
+    <Compile Include="SandboxDungeonWorkspace.cs" />
+    <Compile Include="ProceduralTileKit.cs" />
+    <Compile Include="GeneratedDungeonPlayability.cs" />
+    <Compile Include="GeneratedDungeonProgression.cs" />
+    <Compile Include="RoomConnections.cs" />
+    <Compile Include="RoomPackage.cs" />
+    <Compile Include="SectionTile.cs" />
+    <Compile Include="SandboxTiles.cs" />
+    <Compile Include="TileAssembly.cs" />
+    <Compile Include="SandboxAssembly.cs" />
+    <Compile Include="DungeonRoomTiling.cs" />
+    <Compile Include="ProceduralDungeon.cs" />
+    <Compile Include="DungeonItemArcs.cs" />
+    <Compile Include="RomAssetCatalog.cs" />
+    <Compile Include="RomObjectResolver.cs" />
+    <Compile Include="ActorPreviewInference.cs" />
+    <Compile Include="ActorPreviewOverrides.cs" />
+    <Compile Include="SceneTileLibrary.cs" />
+    <Compile Include="LayoutManifestIntegration.cs" />
+    <Compile Include="RoomGeometryBuilder.cs" />
+    <Compile Include="RoomGeometryEditor.cs" />
+    <Compile Include="MeshEditorData.cs" />
+    <Compile Include="MeshEditorForm.cs" />
+    <Compile Include="AuthoredMeshAsset.cs" />
+    <Compile Include="AuthoredMeshLibraryForm.cs" />
+    <Compile Include="AuthoredMeshAssetEditorForm.cs" />
+    <Compile Include="RoomAssetBrowser.cs" />
+    <Compile Include="AutoCompleteTextBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ExtraImportDataFromFile.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ExtraImportDataFromFile.Designer.cs">
+      <DependentUpon>ExtraImportDataFromFile.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ZText.cs" />
+    <Compile Include="PickString.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PickString.Designer.cs">
+      <DependentUpon>PickString.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ExtraPushCutsceneCommands.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ExtraPushCutsceneCommands.Designer.cs">
+      <DependentUpon>ExtraPushCutsceneCommands.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ExtraMoveActorToRoom.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ExtraMoveActorToRoom.Designer.cs">
+      <DependentUpon>ExtraMoveActorToRoom.cs</DependentUpon>
+    </Compile>
+    <Compile Include="LinkedFile.cs" />
+    <Compile Include="PickBlenderVersion.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PickBlenderVersion.Designer.cs">
+      <DependentUpon>PickBlenderVersion.cs</DependentUpon>
+    </Compile>
+    <Compile Include="TransparentPictureBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="FileToC.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FileToC.Designer.cs">
+      <DependentUpon>FileToC.cs</DependentUpon>
+    </Compile>
+    <Compile Include="AutoHooker.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AutoHooker.Designer.cs">
+      <DependentUpon>AutoHooker.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FaroresPlugin.cs" />
+    <Compile Include="ZobjCopyTool.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ZobjCopyTool.Designer.cs">
+      <DependentUpon>ZobjCopyTool.cs</DependentUpon>
+    </Compile>
+    <Compile Include="AnimationCopyTool.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AnimationCopyTool.Designer.cs">
+      <DependentUpon>AnimationCopyTool.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CustomActorDatabase.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CustomActorDatabase.Designer.cs">
+      <DependentUpon>CustomActorDatabase.cs</DependentUpon>
+    </Compile>
+    <Compile Include="OpenRomScene.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="OpenRomScene.Designer.cs">
+      <DependentUpon>OpenRomScene.cs</DependentUpon>
+    </Compile>
+    <Compile Include="AutoUpdater\RedCell.Diagnostics.Update\Log.cs" />
+    <Compile Include="AutoUpdater\RedCell.Diagnostics.Update\LogEventArgs.cs" />
+    <Compile Include="AutoUpdater\RedCell.Diagnostics.Update\Manifest.cs" />
+    <Compile Include="AutoUpdater\RedCell.Diagnostics.Update\Updater.cs" />
+    <Compile Include="AutoUpdater\RedCell.Net\Fetch.cs" />
+    <Compile Include="AutoUpdater\RedCell.Net\FetchStream.cs" />
+    <Compile Include="ElfSymbols.cs" />
+    <Compile Include="ComboBoxWBar.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="CubeMap.cs" />
+    <Compile Include="CustomCombiner.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CustomCombiner.Designer.cs">
+      <DependentUpon>CustomCombiner.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PickItem.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PickItem.Designer.cs">
+      <DependentUpon>PickItem.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FlagLog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FlagLog.Designer.cs">
+      <DependentUpon>FlagLog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="AddObjectAllRooms.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AddObjectAllRooms.Designer.cs">
+      <DependentUpon>AddObjectAllRooms.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PickCustomActorID.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PickCustomActorID.Designer.cs">
+      <DependentUpon>PickCustomActorID.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Z64romInstallPostOperations.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Z64romInstallPostOperations.Designer.cs">
+      <DependentUpon>Z64romInstallPostOperations.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PleaseWait.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PleaseWait.Designer.cs">
+      <DependentUpon>PleaseWait.cs</DependentUpon>
+    </Compile>
+    <Compile Include="RestrictionFlagPicker.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="RestrictionFlagPicker.Designer.cs">
+      <DependentUpon>RestrictionFlagPicker.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PickSceneSetting.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PickSceneSetting.Designer.cs">
+      <DependentUpon>PickSceneSetting.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FileCreationSaveEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FileCreationSaveEditor.Designer.cs">
+      <DependentUpon>FileCreationSaveEditor.cs</DependentUpon>
+    </Compile>
+    <Compile Include="RestrictionFlagEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="RestrictionFlagEditor.Designer.cs">
+      <DependentUpon>RestrictionFlagEditor.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubscreenMapEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SubscreenMapEditor.Designer.cs">
+      <DependentUpon>SubscreenMapEditor.cs</DependentUpon>
+    </Compile>
+    <Compile Include="TitleScreenEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="TitleScreenEditor.Designer.cs">
+      <DependentUpon>TitleScreenEditor.cs</DependentUpon>
+    </Compile>
+    <Compile Include="TitleCardReplacer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="TitleCardReplacer.Designer.cs">
+      <DependentUpon>TitleCardReplacer.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ActorEditControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ActorEditControl.Designer.cs">
+      <DependentUpon>ActorEditControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Camera.cs" />
+    <Compile Include="z64rom.cs" />
+    <Compile Include="ZActorCutscene.cs" />
+    <Compile Include="ZCamera.cs" />
+    <Compile Include="CutsceneTableEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CutsceneTableEditor.Designer.cs">
+      <DependentUpon>CutsceneTableEditor.cs</DependentUpon>
+    </Compile>
+    <Compile Include="EntranceTableEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="EntranceTableEditor.Designer.cs">
+      <DependentUpon>EntranceTableEditor.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ObjectTableEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ObjectTableEditor.Designer.cs">
+      <DependentUpon>ObjectTableEditor.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ZExit.cs" />
+    <Compile Include="ZCutscene.cs" />
+    <Compile Include="ConsoleWindow.cs" />
+    <Compile Include="ActorDatabase.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ActorDatabase.Designer.cs">
+      <DependentUpon>ActorDatabase.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ZAdditionalLight.cs" />
+    <Compile Include="TextRendering.cs" />
+    <Compile Include="ZPathway.cs" />
+    <Compile Include="GBI.cs" />
+    <Compile Include="Helpers.cs" />
+    <Compile Include="NiceLine.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="SayakaGL\GameHandler.cs" />
+    <Compile Include="SayakaGL\NImage.cs" />
+    <Compile Include="NumericTextBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="NumericUpDownEx.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="SayakaGL\UcodeSimulator.cs" />
+    <Compile Include="XMLreader.cs" />
+    <Compile Include="ZActor.cs" />
+    <Compile Include="NDisplayList.cs" />
+    <Compile Include="IO.cs" />
+    <Compile Include="MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MainForm.Designer.cs">
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="NTexture.cs" />
+    <Compile Include="ObjFile.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TexLib.cs" />
+    <Compile Include="ZColPolyType.cs" />
+    <Compile Include="DungeonPushBlockSolver.cs" />
+    <Compile Include="DungeonTraversalProgression.cs" />
+    <Compile Include="DungeonTraversalCalibration.cs" />
+    <Compile Include="DungeonRomMechanics.cs" />
+    <Compile Include="DungeonTraversalGeometry.cs" />
+    <Compile Include="DungeonCollisionVolumes.cs" />
+    <Compile Include="DungeonWaterMechanics.cs" />
+    <Compile Include="ZEnvironment.cs" />
+    <Compile Include="ZScene.cs" />
+    <Compile Include="ZSceneHeader.cs" />
+    <Compile Include="ZTextureAnim.cs" />
+    <Compile Include="ZWaterbox.cs" />
+    <Compile Include="RandomDropTableEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="RandomDropTableEditor.Designer.cs">
+      <DependentUpon>RandomDropTableEditor.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="ExtraImportDataFromFile.resx">
+      <DependentUpon>ExtraImportDataFromFile.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PickString.resx">
+      <DependentUpon>PickString.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ExtraPushCutsceneCommands.resx">
+      <DependentUpon>ExtraPushCutsceneCommands.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ExtraMoveActorToRoom.resx">
+      <DependentUpon>ExtraMoveActorToRoom.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FileToC.resx">
+      <DependentUpon>FileToC.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="AutoHooker.resx">
+      <DependentUpon>AutoHooker.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PickBlenderVersion.resx">
+      <DependentUpon>PickBlenderVersion.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ZobjCopyTool.resx">
+      <DependentUpon>ZobjCopyTool.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="AnimationCopyTool.resx">
+      <DependentUpon>AnimationCopyTool.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CustomActorDatabase.resx">
+      <DependentUpon>CustomActorDatabase.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="OpenRomScene.resx">
+      <DependentUpon>OpenRomScene.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CustomCombiner.resx">
+      <DependentUpon>CustomCombiner.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PickItem.resx">
+      <DependentUpon>PickItem.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FlagLog.resx">
+      <DependentUpon>FlagLog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="AddObjectAllRooms.resx">
+      <DependentUpon>AddObjectAllRooms.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PickCustomActorID.resx">
+      <DependentUpon>PickCustomActorID.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Z64romInstallPostOperations.resx">
+      <DependentUpon>Z64romInstallPostOperations.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PleaseWait.resx">
+      <DependentUpon>PleaseWait.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="RestrictionFlagPicker.resx">
+      <DependentUpon>RestrictionFlagPicker.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PickSceneSetting.resx">
+      <DependentUpon>PickSceneSetting.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FileCreationSaveEditor.resx">
+      <DependentUpon>FileCreationSaveEditor.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="RestrictionFlagEditor.resx">
+      <DependentUpon>RestrictionFlagEditor.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SubscreenMapEditor.resx">
+      <DependentUpon>SubscreenMapEditor.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TitleScreenEditor.resx">
+      <DependentUpon>TitleScreenEditor.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TitleCardReplacer.resx">
+      <DependentUpon>TitleCardReplacer.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ActorEditControl.resx">
+      <DependentUpon>ActorEditControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ActorDatabase.resx">
+      <DependentUpon>ActorDatabase.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CutsceneTableEditor.resx">
+      <DependentUpon>CutsceneTableEditor.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="EntranceTableEditor.resx">
+      <DependentUpon>EntranceTableEditor.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ObjectTableEditor.resx">
+      <DependentUpon>ObjectTableEditor.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MainForm.resx" Condition="'$(PublicAlpha)' != 'true'">
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx" Condition="'$(PublicAlpha)' != 'true'">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <SubType>Designer</SubType>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\SharedEditor\PublicAlphaMainForm.resx" Condition="'$(PublicAlpha)' == 'true'">
+      <LogicalName>SharpOcarina.MainForm.resources</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\SharedEditor\PublicAlphaResources.resx" Condition="'$(PublicAlpha)' == 'true'">
+      <LogicalName>SharpOcarina.Properties.Resources.resources</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="RandomDropTableEditor.resx">
+      <DependentUpon>RandomDropTableEditor.cs</DependentUpon>
+    </EmbeddedResource>
+    <None Include="app.config" />
+    <None Include="AutoUpdater\RedCell.Diagnostics.Update\packages.config" />
+    <None Include="AutoUpdater\RedCell.Diagnostics.Update\Update.cd" />
+    <None Include="BlenderScripts\io_export_objex2.zip">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="BlenderScripts\io_export_so_3.0.zip">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="BlenderScripts\io_scene_obj_so.zip">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="ClassDiagram1.cd" />
+    <Content Include="Files\BgCheck.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\CrashScreen.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\Cutscene.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\droptable_SO.cfg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\initialsave_SO.cfg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Include="Files\debugsave_SO.cfg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="OpenTK.dll.config" />
+    <None Include="packages.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="AutoUpdater\RedCell.Diagnostics.Update\RedCell.Diagnostics.Update.csproj" />
+    <Content Include="AutoUpdater\RedCell.Net\RedCell.Net.csproj" />
+    <Content Include="Files\KaleidoMapMarkData.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\NewLinkAnims.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\Play.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\PreRender.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\SceneRender.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\SceneRender.h">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\uLib.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\uLib_gameplay.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\z_map_data_minimap.h">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\z_map_data_subscreenmap.h">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\z_map_exp_SO.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Include="Resources\play.bmp" />
+    <None Include="Resources\play.png" />
+    <Content Include="ndec\beat.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ndec\z64decompress.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Include="Resources\icon_copy.png" />
+    <None Include="Resources\icon_paste.png" />
+    <None Include="Resources\icon_edit.png" />
+    <Content Include="XML\OOT\RomPatches.xml">
+      <SubType>Designer</SubType>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\OOT\CutsceneFlagTypes.xml">
+      <SubType>Designer</SubType>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\OOT\ItemDrops.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\OOT\SFXNames.xml">
+      <SubType>Designer</SubType>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\OOT\RenderFunctions.xml">
+      <SubType>Designer</SubType>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\update.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="BlenderScripts\import_readme.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="BlenderScripts\io_import_z64.py">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="BlenderScripts\URL to download unofficial blender.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ChangeLog.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ndec\FreeImage.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ndec\ndec.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ndec\tga2png.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="OOT.ico" />
+    <None Include="Resources\ico_views.png" />
+    <None Include="Resources\refresh.bmp" />
+    <None Include="Resources\refresh.png" />
+    <Content Include="XML\Roms.xml">
+      <SubType>Designer</SubType>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Include="Resources\databaseicon.png" />
+    <Content Include="XML\MM\ActorNames.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\MM\ActorRendering.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\CameraTypes.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\CutsceneActions.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\CutsceneAsm.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\CutsceneMarkers.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\CutsceneTransition.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\Miscelaneous.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\ModelFlags.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\MM\NightSFX.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\ObjectData.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\SceneAnimations.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\SceneNames.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\Skybox.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\SongNames.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\SoundSpecs.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\MM\Worldmap.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\OOT\ActorRendering.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\OOT\CameraTypes.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\OOT\CutsceneActions.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\OOT\CutsceneAsm.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\OOT\CutsceneMarkers.xml">
+      <SubType>Designer</SubType>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\OOT\CutsceneTransition.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\OOT\ItemList.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\OOT\Miscelaneous.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\OOT\ModelFlags.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\OOT\NightSFX.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\OOT\ActorNames.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\OOT\ObjectData.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="ReadMe.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\RecentFiles.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\OOT\SceneAnimations.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\OOT\SceneNames.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\OOT\Worldmap.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Include="Resources\options.png" />
+    <Content Include="XML\OOT\Skybox.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="XML\OOT\SongNames.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XML\OOT\SoundSpecs.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include=".NETFramework,Version=v4.0,Profile=Client">
+      <Visible>False</Visible>
+      <ProductName>Microsoft .NET Framework 4 Client Profile %28x86 y x64%29</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.4.5">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 4.5</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="AutoUpdater\RedCell.Diagnostics.Update\Properties\" />
+    <Folder Include="AutoUpdater\RedCell.Net\Properties\" />
+    <Folder Include="Tools\" />
+  </ItemGroup>
+  <Target Name="BlockUnauditedRelease" BeforeTargets="PrepareForBuild" Condition="'$(Configuration)' == 'Release'">
+    <Error Text="Release packaging is blocked pending the inherited resource and Git-history provenance audit. ROM-derived data must never be distributed." />
+  </Target>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="packages\Microsoft.NETFramework.ReferenceAssemblies.net45.1.0.2\build\Microsoft.NETFramework.ReferenceAssemblies.net45.targets" Condition="Exists('packages\Microsoft.NETFramework.ReferenceAssemblies.net45.1.0.2\build\Microsoft.NETFramework.ReferenceAssemblies.net45.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\Microsoft.NETFramework.ReferenceAssemblies.net45.1.0.2\build\Microsoft.NETFramework.ReferenceAssemblies.net45.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.NETFramework.ReferenceAssemblies.net45.1.0.2\build\Microsoft.NETFramework.ReferenceAssemblies.net45.targets'))" />
+  </Target>
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
