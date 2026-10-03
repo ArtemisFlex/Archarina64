@@ -9,7 +9,9 @@
 - Completed: added a product README and project-boundary documentation that
   identify the SharpOcarina lineage, the dungeon-builder scope, the user-ROM
   boundary, and the active alpha limitations.
-- Pending: run a fresh restore/build from this new repository, then publish it
-  as the canonical public editor repository. The older decomp-rooted public
-  repository should not be used as the editor's home.
-
+- Completed: restored dependencies and built the standalone `Archarina64`
+  solution from this repository with `PublicAlpha=true`; the build produced
+  `src/Archarina64/bin/StandaloneAlpha/Archarina64.exe` with no errors.
+- Pending: publish this repository as the canonical public editor repository.
+  The older decomp-rooted public repository should not be used as the editor's
+  home.

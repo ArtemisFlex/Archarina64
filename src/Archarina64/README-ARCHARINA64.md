@@ -1,8 +1,8 @@
 # Archarina64
 
-Existing-asset OoT scene-builder fork of the customized SharpOcarina modeling editor.
+Standalone dungeon-builder and scene-modeling fork of SharpOcarina.
 
-## Staged Shared-App Merge
+## Editor Composition
 
 Archarina64 remains a separate Dungeon Editor surface inside the shared
 SharpOcarina application. `SharpOcarina.Shared` is the only shared runtime
@@ -18,13 +18,9 @@ cloned and revision-checked; authored `.sog.xml` assets come from the shared
 session repository. Sharp Scene-side shared metadata is persisted in a
 `.shared.xml` companion file, leaving native Scene XML unchanged.
 
-This boundary is intended for staged source integration and Debug/x64
-validation. It does not claim that native ROM injection or emulator gameplay
-acceptance is complete; those remain explicit Archarina acceptance gates.
-
-Baseline: `51b637dba0ef35f9a6d975d8db3cdc507319c431`.
-Branch: `archarina64/scene-builder`. The independent Git repository retains baseline history;
-the `baseline` remote points to the sibling modeling checkout. No repository was published.
+This boundary is intended for standalone Debug/x64 validation. It does not claim
+that native ROM injection or emulator gameplay acceptance is complete; those
+remain explicit Archarina acceptance gates.
 
 ## Build and Run
 

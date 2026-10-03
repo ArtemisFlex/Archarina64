@@ -18,22 +18,15 @@ All new extraction, imported mesh/texture working files, screenshots, logs and n
 use `%LOCALAPPDATA%/Archarina64`. They are not application content or embedded resources.
 The source ROM remains read-only; the sandbox's injection command requires a separate output path.
 
-The inherited checkout contained 395 tracked object/scene/room payloads, plus two embedded title-screen
-binary resources. These payloads have been moved to a private baseline quarantine outside the checkout,
-removed from project content/resource declarations, and excluded from future additions via `.gitignore`.
-The original modeling checkout has not been altered. Old generated payloads and imported textures were
-also moved out of Archarina64's build/source folders.
+This standalone repository is source-only. It contains the editor implementation,
+neutral UI resources, source-level tooling, and ordinary redistributable build
+dependencies, but no ROM, extracted room/object/actor payloads, title-screen
+data, or compiled game patches. Local extraction caches and imported textures
+remain outside the repository under `%LOCALAPPDATA%/Archarina64`.
 
-The inherited Git history STILL contains the original assets. Do not publish this repository history.
-Publication needs a clean source-only repository/export after reviewing remaining inherited images,
-audio, fonts and patch resources. Release builds are blocked until that provenance audit is complete.
-This development executable is not certified as a distributable artifact.
-
-Final housekeeping caveat: OneDrive stalled a follow-up move of the obsolete build-local
-`arch_tile_library` cache and a full Git whitespace check. Those commands were stopped;
-obsolete ignored cache files may remain under the build directory. They are not project
-content and the running application no longer reads or writes that location. Do not zip
-the development build directory for distribution. The release gate remains in force.
+The public repository is intentionally independent from any OoT decompilation
+checkout. Do not add ROM backups or extracted game assets to this repository or
+to a release archive.
 
 ## Version Finding
 
